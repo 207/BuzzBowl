@@ -138,7 +138,7 @@ You don’t *have* to use three enum values if `**open` + `locked` + `buzzWinner
 **Meaning:** “**Which** player on each team is the active buzzer for **this** head‑to‑head?”
 
 - `**activeIndexTeamA`** (number): index into Team A’s ordered roster (0 … len−1).
-- `**activeIndexTeamB*`* (number): same for Team B.
+- `**activeIndexTeamB`** (number): same for Team B.
 
 After each finished tossup (per your rotation rules), increment (with wrap):  
 `activeIndexTeamA = (activeIndexTeamA + 1) % teamA.length` (and same for B).

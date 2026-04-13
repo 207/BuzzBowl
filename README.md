@@ -4,7 +4,10 @@ Quiz bowl–style party game: **host** on a big screen, **players** buzz in from
 
 The **web UI** lives under `client/` and is based on the `quiz-party-main` design (Vite + React + Tailwind + shadcn/ui), wired to this repo’s game server.
 
-**Monorepo layout:** `package.json` at the repo root (workspace **`buzzbowl`**), packages **`server/`** (Node + Socket.io) and **`client/`** (Vite app), **`docs/`** for product notes.
+**Monorepo layout:** root `package.json` (npm workspace name `buzzbowl`), packages `server/` (Node + Socket.io) and `client/` (Vite app), `docs/` for product and engineering notes.
+
+- [Architecture (diagrams)](docs/architecture.md)
+- [Backlog / revisit later](docs/BACKLOG.md)
 
 Clone or rename your local folder however you like (e.g. `BuzzBowl`); npm workspace names are independent of the folder name.
 
@@ -44,4 +47,4 @@ Run the server with access to the internet so it can reach `https://qbreader.org
 
 **Routes:** `/` home · `/host` create room · `/lobby/:code` lobby · `/host/game/:code` host play screen · `/join` / `/join/:code` join · `/play/:code` player buzzer.
 
-Host recovery after a browser refresh: reopen `/lobby/:code` on the same device (host secret is in `sessionStorage` under `buzzbowl_*` keys).
+Host recovery after a browser refresh: reopen `/lobby/:code` on the same device (host secret is in `sessionStorage` under `buzzbowl_`* keys).

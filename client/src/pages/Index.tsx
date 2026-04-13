@@ -15,7 +15,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
+    <div className="relative flex min-h-dvh w-full min-w-0 flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-hero" />
 
@@ -27,17 +27,17 @@ const Index = () => {
       <div className="absolute top-1/2 left-[5%] text-3xl animate-float opacity-10 select-none" style={{ animationDelay: "2s" }}>✨</div>
 
       {/* Main content */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-20">
-        <div className="max-w-xl mx-auto text-center space-y-10">
+      <main className="relative z-10 flex min-h-0 w-full min-w-0 flex-1 items-center justify-center px-4 py-20">
+        <div className="mx-auto w-full max-w-xl space-y-10 text-center">
           {/* Logo / Title */}
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-5 py-2 text-sm text-primary font-body font-medium">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="inline-flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-5 py-2 text-sm text-primary font-body font-medium">
               <span className="text-lg">🎮</span>
               Quiz bowl party game
             </div>
 
-            <h1 className="text-6xl md:text-8xl font-heading font-extrabold leading-[0.95] tracking-tight">
-              <span className="text-gradient">BuzzBowl</span>
+            <h1 className="flex w-full justify-center text-6xl md:text-8xl font-heading font-extrabold leading-[0.95] tracking-tight">
+              <span className="text-gradient inline-block w-fit">BuzzBowl</span>
             </h1>
 
             <p className="text-base md:text-lg text-muted-foreground font-body max-w-md mx-auto leading-relaxed">
