@@ -63,11 +63,16 @@ export class Room {
   teamScoreA = 0;
   teamScoreB = 0;
 
+  /** Player ids in join order, fixed at `startGame` (FFA reader rotation). */
+  ffaTurnOrder: string[] = [];
+  /** Set when a tossup round ends; shown to everyone on the break screen; cleared on continue. */
+  lastRoundAnswer: string | null = null;
+
   /** Set by socket layer to push state after each change */
-  notify: ((room: Room) => void) | null = null;
+  notify: (() => void) | null = null;
 
   private push(): void {
-    this.notify?.(this);
+    this.notify?.();
   }
 
   static create(): Room {
@@ -163,6 +168,7 @@ export class Room {
     this.activeIndexA = 0;
     this.activeIndexB = 0;
     for (const p of this.players.values()) p.score = 0;
+    this.ffaTurnOrder = [...this.players.keys()];
     this.advanceToNextTossup();
     this.push();
   }
@@ -238,16 +244,32 @@ export class Room {
     this.push();
   }
 
+  getReaderPlayerId(): string | null {
+    if (!this.current || this.phase !== "playing") return null;
+    if (this.gameMode === "ffa") {
+      if (this.ffaTurnOrder.length === 0) return null;
+      return this.ffaTurnOrder[this.currentTossupIndex % this.ffaTurnOrder.length] ?? null;
+    }
+    const sideA = this.currentTossupIndex % 2 === 0;
+    const order = sideA ? this.teamOrderA : this.teamOrderB;
+    if (order.length === 0) return null;
+    const idx = Math.floor(this.currentTossupIndex / 2) % order.length;
+    return order[idx] ?? null;
+  }
+
   eligibleBuzzPlayerIds(): string[] {
     if (!this.current || this.current.buzzPhase !== "open") return [];
+    const reader = this.getReaderPlayerId();
+    const withoutReader = (ids: string[]) =>
+      reader ? ids.filter((id) => id !== reader) : ids;
     if (this.current.buzzEligibleIds)
-      return [...this.current.buzzEligibleIds];
+      return withoutReader([...this.current.buzzEligibleIds]);
     if (this.gameMode === "ffa") {
-      return [...this.players.keys()];
+      return withoutReader([...this.players.keys()]);
     }
     const a = this.teamOrderA[this.activeIndexA];
     const b = this.teamOrderB[this.activeIndexB];
-    return [a, b].filter(Boolean) as string[];
+    return withoutReader([a, b].filter(Boolean) as string[]);
   }
 
   buzz(playerId: string): { ok: boolean; reason?: string } {
@@ -336,6 +358,7 @@ export class Room {
   }
 
   private finishTossupRound(): void {
+    this.lastRoundAnswer = this.getAnswerLine();
     this.clearRevealTimer();
     if (this.gameMode === "team") {
       if (this.teamOrderA.length)
@@ -352,6 +375,7 @@ export class Room {
 
   continueAfterBetween(): void {
     if (this.phase !== "between") return;
+    this.lastRoundAnswer = null;
     this.phase = "playing";
     this.advanceToNextTossup();
   }
@@ -378,7 +402,7 @@ export class Room {
     return this.current?.dto.answer_sanitized ?? null;
   }
 
-  getStatePayload() {
+  getStatePayload(opts?: { includeReaderAnswer?: boolean }) {
     const players = [...this.players.values()].map((p) => ({
       id: p.id,
       nickname: p.nickname,
@@ -387,6 +411,19 @@ export class Room {
     }));
     const activeA = this.teamOrderA[this.activeIndexA] ?? null;
     const activeB = this.teamOrderB[this.activeIndexB] ?? null;
+    const readerId = this.getReaderPlayerId();
+
+    let answer: string | null = null;
+    if (this.phase === "between" && this.lastRoundAnswer) {
+      answer = this.lastRoundAnswer;
+    } else if (
+      this.phase === "playing" &&
+      this.current &&
+      opts?.includeReaderAnswer
+    ) {
+      answer = this.getAnswerLine();
+    }
+
     return {
       code: this.code,
       phase: this.phase,
@@ -399,9 +436,8 @@ export class Room {
       currentTossupIndex: this.currentTossupIndex,
       totalTossups: this.tossupQueue.length,
       tossup: this.getPublicTossupState(),
-      answer: this.phase === "playing" && this.current?.buzzPhase === "locked"
-        ? this.getAnswerLine()
-        : null,
+      answer,
+      readerPlayerId: readerId,
       activePlayerIdA: activeA,
       activePlayerIdB: activeB,
       eligibleBuzzIds: this.eligibleBuzzPlayerIds(),
@@ -409,4 +445,4 @@ export class Room {
   }
 }
 
-export type RoomNotify = (room: Room) => void;
+export type RoomNotify = () => void;

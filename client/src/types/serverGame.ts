@@ -39,7 +39,10 @@ export interface ServerGameState {
   currentTossupIndex: number;
   totalTossups: number;
   tossup: ServerTossup | null;
+  /** Printed answer: on break, everyone sees previous tossup; during play, only the reader socket gets this. */
   answer: string | null;
+  /** Designated reader for this tossup; cannot buzz; sees `answer` on their phone during play. */
+  readerPlayerId: string | null;
   activePlayerIdA: string | null;
   activePlayerIdB: string | null;
   eligibleBuzzIds: string[];

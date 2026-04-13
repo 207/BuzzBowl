@@ -117,6 +117,12 @@ const PlayGame = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-xl font-heading text-foreground">Round break</p>
+        {state.answer ? (
+          <div className="game-card w-full max-w-md p-5">
+            <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Previous answer</p>
+            <p className="mt-2 text-base font-heading text-accent">{state.answer}</p>
+          </div>
+        ) : null}
         {state.gameMode === "ffa" && (
           <p className="font-mono text-2xl text-primary">{me?.score ?? 0} pts</p>
         )}
@@ -131,10 +137,11 @@ const PlayGame = () => {
 
   if (state.phase === "playing" && state.tossup) {
     const t = state.tossup;
+    const imReader = state.readerPlayerId === playerId;
     const eligible = state.eligibleBuzzIds?.includes(playerId) ?? false;
     const canBuzz = t.buzzPhase === "open" && eligible;
     const iBuzzed = t.buzzPhase === "locked" && t.buzzWinnerId === playerId;
-    const watching = state.gameMode === "team" && !eligible && !iBuzzed;
+    const watching = state.gameMode === "team" && !eligible && !iBuzzed && !imReader;
 
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -147,11 +154,22 @@ const PlayGame = () => {
             <span className="text-primary font-semibold">Your score: {me?.score ?? 0}</span>
           )}
         </div>
+        {imReader && (
+          <p className="bg-primary/15 px-4 py-2 text-center text-sm font-body text-primary font-medium">
+            You&apos;re reading this tossup — buzzer off
+          </p>
+        )}
         {watching && (
           <p className="bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
             Watching this matchup — buzzer off
           </p>
         )}
+        {imReader && state.answer ? (
+          <div className="mx-4 mt-4 game-card border-primary/30 p-5">
+            <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Answer line</p>
+            <p className="mt-2 text-lg font-heading text-accent leading-snug">{state.answer}</p>
+          </div>
+        ) : null}
         <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4 pb-12">
           {iBuzzed ? (
             <p className="text-3xl font-heading font-bold text-primary">You buzzed!</p>

@@ -93,6 +93,12 @@ const HostLive = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-8">
         <h2 className="text-2xl font-heading font-bold text-foreground">Break</h2>
+        {state.answer ? (
+          <div className="game-card max-w-2xl w-full p-6 text-center">
+            <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Previous answer</p>
+            <p className="mt-2 text-lg font-heading text-accent">{state.answer}</p>
+          </div>
+        ) : null}
         <PlayerList players={uiPlayers} mode={uiMode} />
         <Button variant="hero" size="xl" onClick={() => emit("continue_game")}>
           <FastForward className="w-5 h-5" />
@@ -109,6 +115,14 @@ const HostLive = () => {
         <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground font-body">
           <span>
             Tossup {state.currentTossupIndex + 1} / {state.totalTossups}
+          </span>
+          <span>
+            Reader:{" "}
+            <span className="text-foreground font-medium">
+              {state.readerPlayerId
+                ? state.players.find((p) => p.id === state.readerPlayerId)?.nickname ?? "—"
+                : "—"}
+            </span>
           </span>
           {state.gameMode === "team" && (
             <span>
@@ -128,11 +142,13 @@ const HostLive = () => {
           ) : null}
         </div>
 
-        {t.buzzPhase === "locked" && state.answer && (
-          <div className="game-card p-5 border-accent/30">
-            <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Answer line</p>
-            <p className="mt-2 text-lg font-heading text-accent">{state.answer}</p>
-            <p className="mt-2 text-sm text-muted-foreground font-body">
+        {t.buzzPhase === "locked" && (
+          <div className="game-card p-5 border-border/60">
+            <p className="text-sm text-muted-foreground font-body">
+              Printed answer is on the <span className="text-foreground font-semibold">reader&apos;s phone</span> until
+              this tossup ends (shown here on the break screen).
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground font-body">
               Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName}</span>
             </p>
           </div>

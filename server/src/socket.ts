@@ -5,23 +5,38 @@ import {
   createRoom,
   getRoom,
 } from "./registry.js";
+import type { Room } from "./room.js";
 import type { GameMode, GameSettings } from "./types.js";
 
-function emitRoom(io: Server, code: string, payload: unknown): void {
-  io.to(code).emit("game_state", payload);
+/** Per-socket payload so the printed answer is only sent to the designated reader. */
+async function emitGameStateToRoom(io: Server, room: Room): Promise<void> {
+  const sockets = await io.in(room.code).fetchSockets();
+  for (const sock of sockets) {
+    const meta = sock.data as { playerId?: string };
+    const includeReaderAnswer = Boolean(
+      meta.playerId && meta.playerId === room.getReaderPlayerId(),
+    );
+    sock.emit("game_state", room.getStatePayload({ includeReaderAnswer }));
+  }
+}
+
+function scheduleEmitGameState(io: Server, room: Room): void {
+  void emitGameStateToRoom(io, room).catch((e) => {
+    console.error("emitGameStateToRoom", e);
+  });
 }
 
 export function registerSocketHandlers(io: Server): void {
   io.on("connection", (socket: Socket) => {
     socket.on("create_room", () => {
       const room = createRoom();
-      attachRoomNotifier(room, (code, payload) => emitRoom(io, code, payload));
+      attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
       socket.join(room.code);
       socket.emit("host_created", {
         roomCode: room.code,
         hostSecret: room.hostSecret,
       });
-      emitRoom(io, room.code, room.getStatePayload());
+      scheduleEmitGameState(io, room);
     });
 
     socket.on(
@@ -36,10 +51,10 @@ export function registerSocketHandlers(io: Server): void {
           return;
         }
         if (!room.notify)
-          attachRoomNotifier(room, (code, payload) => emitRoom(io, code, payload));
+          attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
         socket.join(room.code);
         ack?.({ ok: true });
-        emitRoom(io, room.code, room.getStatePayload());
+        scheduleEmitGameState(io, room);
       },
     );
 
@@ -59,14 +74,14 @@ export function registerSocketHandlers(io: Server): void {
           return;
         }
         if (!room.notify)
-          attachRoomNotifier(room, (code, payload) => emitRoom(io, code, payload));
+          attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
         const p = room.addPlayer(msg.nickname, socket.id);
         socket.join(room.code);
         const meta = socket.data as { playerId?: string; roomCode?: string };
         meta.playerId = p.id;
         meta.roomCode = room.code;
         ack?.({ playerId: p.id });
-        emitRoom(io, room.code, room.getStatePayload());
+        scheduleEmitGameState(io, room);
       },
     );
 
@@ -87,7 +102,7 @@ export function registerSocketHandlers(io: Server): void {
         meta.playerId = msg.playerId;
         meta.roomCode = room.code;
         ack?.({ ok: true });
-        emitRoom(io, room.code, room.getStatePayload());
+        scheduleEmitGameState(io, room);
       },
     );
 
@@ -198,8 +213,7 @@ export function registerSocketHandlers(io: Server): void {
     socket.on("buzz", (msg: { roomCode: string; playerId: string }) => {
       const room = getRoom(msg.roomCode);
       if (!room) return;
-      const res = room.buzz(msg.playerId);
-      if (res.ok) emitRoom(io, room.code, room.getStatePayload());
+      room.buzz(msg.playerId);
     });
 
     socket.on(
@@ -242,7 +256,7 @@ export function registerSocketHandlers(io: Server): void {
       const code = (socket.data as { roomCode?: string }).roomCode;
       const room = code ? getRoom(code) : undefined;
       room?.removeSocket(socket.id);
-      if (room) emitRoom(io, room.code, room.getStatePayload());
+      if (room) scheduleEmitGameState(io, room);
     });
   });
 }
