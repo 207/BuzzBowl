@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 25% 9%;
+    --foreground: 45 20% 95%;
+
+    --card: 230 22% 13%;
+    --card-foreground: 45 20% 95%;
+
+    --popover: 230 22% 13%;
+    --popover-foreground: 45 20% 95%;
+
+    --primary: 43 96% 56%;
+    --primary-foreground: 230 25% 9%;
+
+    --secondary: 340 75% 60%;
+    --secondary-foreground: 45 20% 95%;
+
+    --muted: 230 18% 16%;
+    --muted-foreground: 230 15% 55%;
+
+    --accent: 165 70% 50%;
+    --accent-foreground: 230 25% 9%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 45 20% 95%;
+
+    --border: 230 15% 20%;
+    --input: 230 18% 18%;
+    --ring: 43 96% 56%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 230 22% 11%;
+    --sidebar-foreground: 45 20% 95%;
+    --sidebar-primary: 43 96% 56%;
+    --sidebar-primary-foreground: 230 25% 9%;
+    --sidebar-accent: 230 18% 16%;
+    --sidebar-accent-foreground: 45 20% 95%;
+    --sidebar-border: 230 15% 20%;
+    --sidebar-ring: 43 96% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary)),
+      hsl(43 90% 68%),
+      hsl(var(--primary))
+    );
+  }
+
+  .bg-gradient-hero {
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, hsl(var(--secondary) / 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse 50% 40% at 10% 60%, hsl(var(--accent) / 0.05) 0%, transparent 50%);
+  }
+
+  .bg-gradient-card {
+    background-image: linear-gradient(
+      145deg,
+      hsl(var(--card)),
+      hsl(var(--muted) / 0.5)
+    );
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px -4px hsl(var(--primary) / 0.35),
+                0 0 48px -8px hsl(var(--primary) / 0.15);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 24px -4px hsl(var(--accent) / 0.35),
+                0 0 48px -8px hsl(var(--accent) / 0.15);
+  }
+
+  .game-card {
+    @apply rounded-2xl border border-border/50 bg-gradient-card backdrop-blur-sm;
+    @apply transition-all duration-300;
+  }
+
+  .game-card:hover {
+    @apply border-primary/30;
+    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.15);
+  }
+}
