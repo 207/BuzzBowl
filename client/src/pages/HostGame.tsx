@@ -69,7 +69,7 @@ const HostGame = () => {
         <div className="text-center space-y-2">
           <Crown className="w-10 h-10 text-primary mx-auto" />
           <h1 className="text-3xl font-heading font-bold text-foreground">Host a Game</h1>
-          <p className="text-muted-foreground font-body text-sm">Set up a BuzzIn room</p>
+          <p className="text-muted-foreground font-body text-sm">Set up a BuzzBowl room</p>
         </div>
 
         <div className="game-card p-6 space-y-5">

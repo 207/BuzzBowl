@@ -1,4 +1,4 @@
-# BuzzIn — Quiz Bowl Party Game
+# BuzzBowl — Quiz Bowl Party Game
 
 ## Product Design Document v0.2
 
@@ -12,7 +12,7 @@
 
 ## 1. Overview
 
-BuzzIn is a web-based party game where a host displays quiz bowl questions on a shared screen (TV, laptop, or projector) while players join from their phones via a short room code — no app install required. Players buzz in to answer; the host judges answers and awards points in real time.
+BuzzBowl is a web-based party game where a host displays quiz bowl questions on a shared screen (TV, laptop, or projector) while players join from their phones via a short room code — no app install required. Players buzz in to answer; the host judges answers and awards points in real time.
 
 The game supports two modes: Free for All (every player has a buzzer) and Head-to-Head Team Mode (two teams, one representative per team competes per round).
 
@@ -351,7 +351,7 @@ Common packet format (NAQT, ACF, etc.) is fairly consistent, making regex-based 
 4. Monetization: Free forever, or paid for large rooms / premium features?
 5. QB Reader usage: Confirm [API terms](https://www.qbreader.org/) for **attribution** and allowed use; caching rules if you prefetch. Rate limits are a low priority for friends-only v1.
 6. Mobile web limitations: Vibration API works on Android but not iOS Safari. Acceptable?
-7. App name: "BuzzIn" is placeholder — worth checking for trademark conflicts.
+7. App name: "BuzzBowl" — worth checking for trademark conflicts.
 
 *(Deferred with PDF: packet licensing for host uploads, parsing accuracy / host edit burden.)*
 

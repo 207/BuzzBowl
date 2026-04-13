@@ -1,6 +1,6 @@
-# BuzzIn v1 — decision log
+# BuzzBowl v1 — decision log
 
-Working defaults for implementation and playtesting. Adjust as you learn; this file is the “we picked X” anchor (see also `BuzzIn-Product-Design-v0.2.md` §13–§14).
+Working defaults for implementation and playtesting. Adjust as you learn; this file is the “we picked X” anchor (see also `BuzzBowl-Product-Design-v0.2.md` §13–§14).
 
 ---
 
@@ -11,7 +11,7 @@ Working defaults for implementation and playtesting. Adjust as you learn; this f
 | ------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Question source (v1)** | QB Reader API only                                 | No PDF; no custom packets until a later milestone.                                                                                                                                                                                                         |
 | **Monetization (v1)**    | Free; no payments                                  | Revisit after real usage (rooms, costs, abuse).                                                                                                                                                                                                            |
-| **Name**                 | Ship as **BuzzIn** for v1                          | Do a quick trademark/web search before any public marketing spend.                                                                                                                                                                                         |
+| **Name**                 | Ship as **BuzzBowl** for v1                        | Do a quick trademark/web search before any public marketing spend.                                                                                                                                                                                         |
 | **MVP contingency**      | If timeline slips: **FFA-only v1**, team mode next | North star stays full doc; this is an explicit escape hatch.                                                                                                                                                                                               |
 | **Audience (early v1)**  | **Friends-only** playtests                         | No need to engineer around QB Reader rate limits yet; still follow their ToS when you read them.                                                                                                                                                           |
 | **Player rejoin**        | **Not in v1**                                      | No “same person, same score” after the tab closes or they leave. They can **join again** with the room code as a **new** player (new nickname), or you accept a duplicate nickname for friends-only. **Full rejoin / restore identity** → later milestone. |
@@ -127,9 +127,9 @@ Think of it as a small state machine:
 | `**winner` (optional)** | Often folded into `locked`. If split: `winner` = which `playerId` buzzed first; `locked` = player UIs frozen. **Practical v1:** use `**buzzWinnerPlayerId`** (set or null) and treat locked as “winner is set.” | Same as locked.                   |
 
 
-After the host resolves (e.g. wrong + re-open on same tossup), phase goes back to `**open**` with `buzzWinnerPlayerId` cleared. After “correct” or “next question,” you reset for a new tossup.
+After the host resolves (e.g. wrong + re-open on same tossup), phase goes back to `**open`** with `buzzWinnerPlayerId` cleared. After “correct” or “next question,” you reset for a new tossup.
 
-You don’t *have* to use three enum values if `**open` + `locked` + `buzzWinnerPlayerId*`* covers your UI — the checklist is naming the **concepts**.
+You don’t *have* to use three enum values if `**open` + `locked` + `buzzWinnerPlayerId`** covers your UI — the checklist is naming the **concepts**.
 
 ---
 
@@ -138,7 +138,7 @@ You don’t *have* to use three enum values if `**open` + `locked` + `buzzWinner
 **Meaning:** “**Which** player on each team is the active buzzer for **this** head‑to‑head?”
 
 - `**activeIndexTeamA`** (number): index into Team A’s ordered roster (0 … len−1).
-- `**activeIndexTeamB**` (number): same for Team B.
+- `**activeIndexTeamB*`* (number): same for Team B.
 
 After each finished tossup (per your rotation rules), increment (with wrap):  
 `activeIndexTeamA = (activeIndexTeamA + 1) % teamA.length` (and same for B).
@@ -153,4 +153,3 @@ After each finished tossup (per your rotation rules), increment (with wrap):
 - Model **per-tossup (or per-round) state** on the server: `revealComplete`, buzz eligibility + who buzzed (`buzzWinnerPlayerId` or equivalent), and **team rep indices** in team mode.
 - Implement **host token** so the host display can refresh without killing the room. (**Player rejoin tokens** — skip for v1.)
 - Align client copy: no QR until v1.1.
-

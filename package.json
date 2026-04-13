@@ -1,5 +1,5 @@
 {
-  "name": "buzzin",
+  "name": "buzzbowl",
   "private": true,
   "workspaces": [
     "server",

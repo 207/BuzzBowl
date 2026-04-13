@@ -1,13 +1,13 @@
 export function hostKey(roomCode: string): string {
-  return `buzzin_host_${roomCode.trim().toUpperCase()}`;
+  return `buzzbowl_host_${roomCode.trim().toUpperCase()}`;
 }
 
 export function playerKey(roomCode: string): string {
-  return `buzzin_player_${roomCode.trim().toUpperCase()}`;
+  return `buzzbowl_player_${roomCode.trim().toUpperCase()}`;
 }
 
 export function setupKey(roomCode: string): string {
-  return `buzzin_setup_${roomCode.trim().toUpperCase()}`;
+  return `buzzbowl_setup_${roomCode.trim().toUpperCase()}`;
 }
 
 export interface HostSetupPayload {

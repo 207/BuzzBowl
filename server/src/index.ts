@@ -31,5 +31,5 @@ const io = new Server(server, {
 registerSocketHandlers(io);
 
 server.listen(PORT, () => {
-  console.log(`BuzzIn server http://localhost:${PORT} (CORS ${CLIENT_ORIGIN})`);
+  console.log(`BuzzBowl server http://localhost:${PORT} (CORS ${CLIENT_ORIGIN})`);
 });

@@ -37,7 +37,7 @@ const Index = () => {
             </div>
 
             <h1 className="text-6xl md:text-8xl font-heading font-extrabold leading-[0.95] tracking-tight">
-              <span className="text-gradient">BuzzIn</span>
+              <span className="text-gradient">BuzzBowl</span>
             </h1>
 
             <p className="text-base md:text-lg text-muted-foreground font-body max-w-md mx-auto leading-relaxed">
