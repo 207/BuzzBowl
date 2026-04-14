@@ -1,0 +1,8 @@
+---
+description: Behavioral guidelines — think first, simplicity, surgical edits, goal-driven work
+alwaysApply: true
+---
+
+Follow the behavioral standards in **@Guidelines.md** (repo root) for all Agent work in this project. Treat them as defaults unless the user clearly overrides for a specific task.
+
+When those guidelines conflict with a one-off user request, the explicit request wins; otherwise apply them fully.

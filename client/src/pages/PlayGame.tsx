@@ -5,7 +5,7 @@ import { useServerGameState } from "@/hooks/useServerGameState";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { getSocket } from "@/lib/socket";
 import { playerKey } from "@/lib/roomStorage";
-import { Home, Trophy } from "lucide-react";
+import { Home, Trophy, Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
   const navigate = useNavigate();
@@ -36,6 +36,11 @@ const PlayGame = () => {
     () => state?.players.find((p) => p.id === playerId),
     [state?.players, playerId],
   );
+
+  const readerEmit = (event: string) => {
+    if (!code || !playerId) return;
+    getSocket().emit(event, { roomCode: code, playerId });
+  };
 
   const buzz = () => {
     if (!code || !playerId) return;
@@ -114,6 +119,7 @@ const PlayGame = () => {
   }
 
   if (state.phase === "between") {
+    const canAdvance = state.betweenControlsPlayerId === playerId;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-xl font-heading text-foreground">Round break</p>
@@ -131,6 +137,16 @@ const PlayGame = () => {
             {state.teamNames.A} {state.teamScoreA} — {state.teamScoreB} {state.teamNames.B}
           </p>
         )}
+        {canAdvance ? (
+          <Button variant="hero" size="xl" className="w-full max-w-sm" onClick={() => readerEmit("continue_game")}>
+            <FastForward className="w-5 h-5" />
+            Next tossup
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground font-body max-w-xs">
+            Waiting for the reader to start the next tossup…
+          </p>
+        )}
       </div>
     );
   }
@@ -142,6 +158,9 @@ const PlayGame = () => {
     const canBuzz = t.buzzPhase === "open" && eligible;
     const iBuzzed = t.buzzPhase === "locked" && t.buzzWinnerId === playerId;
     const watching = state.gameMode === "team" && !eligible && !iBuzzed && !imReader;
+
+    const revealToggleDisabled = t.revealComplete;
+    const revealToggleLabel = t.revealComplete ? "Reveal done" : t.revealPaused ? "Resume" : "Pause";
 
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -156,7 +175,7 @@ const PlayGame = () => {
         </div>
         {imReader && (
           <p className="bg-primary/15 px-4 py-2 text-center text-sm font-body text-primary font-medium">
-            You&apos;re reading this tossup — buzzer off
+            You&apos;re reading — run controls below (buzzer off)
           </p>
         )}
         {watching && (
@@ -170,6 +189,53 @@ const PlayGame = () => {
             <p className="mt-2 text-lg font-heading text-accent leading-snug">{state.answer}</p>
           </div>
         ) : null}
+
+        {imReader && (
+          <div className="mx-4 mt-3 flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={revealToggleDisabled}
+                className={revealToggleDisabled ? "opacity-50" : ""}
+                onClick={() => {
+                  if (revealToggleDisabled) return;
+                  if (t.revealPaused) readerEmit("resume_reveal");
+                  else readerEmit("pause_reveal");
+                }}
+              >
+                {t.revealPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                {revealToggleLabel}
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => readerEmit("show_full_question")}>
+                <Maximize2 className="w-4 h-4" />
+                Show full
+              </Button>
+            </div>
+            {t.buzzPhase === "locked" && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="bg-emerald-600 hover:bg-emerald-500"
+                  onClick={() => readerEmit("mark_correct")}
+                >
+                  <Check className="w-5 h-5" />
+                  Correct
+                </Button>
+                <Button variant="destructive" size="lg" onClick={() => readerEmit("mark_incorrect")}>
+                  <X className="w-5 h-5" />
+                  Incorrect
+                </Button>
+                <Button variant="glow" size="lg" onClick={() => readerEmit("skip_question")}>
+                  <SkipForward className="w-5 h-5" />
+                  Skip
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4 pb-12">
           {iBuzzed ? (
             <p className="text-3xl font-heading font-bold text-primary">You buzzed!</p>

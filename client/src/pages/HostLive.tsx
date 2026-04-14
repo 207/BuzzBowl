@@ -5,7 +5,6 @@ import { useServerGameState } from "@/hooks/useServerGameState";
 import { getSocket } from "@/lib/socket";
 import { hostKey } from "@/lib/roomStorage";
 import { toast } from "sonner";
-import { Pause, Play, SkipForward, Check, X, FastForward } from "lucide-react";
 import PlayerList from "@/components/PlayerList";
 import { mapServerPlayers } from "@/lib/gameTypes";
 
@@ -31,11 +30,6 @@ const HostLive = () => {
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
   }, [state?.phase, code, navigate]);
-
-  const emit = (event: string, payload: Record<string, unknown> = {}) => {
-    if (!code || !hostSecret) return;
-    getSocket().emit(event, { roomCode: code, hostSecret, ...payload });
-  };
 
   if (!code || !hostSecret) return null;
 
@@ -100,10 +94,9 @@ const HostLive = () => {
           </div>
         ) : null}
         <PlayerList players={uiPlayers} mode={uiMode} />
-        <Button variant="hero" size="xl" onClick={() => emit("continue_game")}>
-          <FastForward className="w-5 h-5" />
-          Next tossup
-        </Button>
+        <p className="max-w-md text-center text-sm text-muted-foreground font-body">
+          <span className="text-foreground font-medium">Reader</span> advances the game from their phone (next tossup).
+        </p>
       </div>
     );
   }
@@ -154,36 +147,10 @@ const HostLive = () => {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="lg" onClick={() => emit("pause_reveal")}>
-            <Pause className="w-4 h-4" />
-            Pause
-          </Button>
-          <Button variant="outline" size="lg" onClick={() => emit("resume_reveal")}>
-            <Play className="w-4 h-4" />
-            Resume
-          </Button>
-          <Button variant="outline" size="lg" onClick={() => emit("show_full_question")}>
-            Show full
-          </Button>
-        </div>
-
-        {t.buzzPhase === "locked" && (
-          <div className="flex flex-wrap gap-3">
-            <Button variant="default" size="xl" className="bg-emerald-600 hover:bg-emerald-500" onClick={() => emit("mark_correct")}>
-              <Check className="w-5 h-5" />
-              Correct
-            </Button>
-            <Button variant="destructive" size="xl" onClick={() => emit("mark_incorrect")}>
-              <X className="w-5 h-5" />
-              Incorrect
-            </Button>
-            <Button variant="glow" size="xl" onClick={() => emit("skip_question")}>
-              <SkipForward className="w-5 h-5" />
-              Skip
-            </Button>
-          </div>
-        )}
+        <p className="text-center text-sm text-muted-foreground font-body max-w-xl mx-auto">
+          Pause, reveal, judge, and skip are on the <span className="text-foreground font-medium">reader&apos;s phone</span>{" "}
+          so this screen can stay up without someone at the laptop.
+        </p>
 
         <PlayerList players={uiPlayers} mode={uiMode} />
       </div>

@@ -67,6 +67,8 @@ export class Room {
   ffaTurnOrder: string[] = [];
   /** Set when a tossup round ends; shown to everyone on the break screen; cleared on continue. */
   lastRoundAnswer: string | null = null;
+  /** Reader who may tap “next tossup” on break; set with `lastRoundAnswer` before `current` is cleared. */
+  readerBetweenPlayerId: string | null = null;
 
   /** Set by socket layer to push state after each change */
   notify: (() => void) | null = null;
@@ -169,6 +171,7 @@ export class Room {
     this.activeIndexB = 0;
     for (const p of this.players.values()) p.score = 0;
     this.ffaTurnOrder = [...this.players.keys()];
+    this.readerBetweenPlayerId = null;
     this.advanceToNextTossup();
     this.push();
   }
@@ -359,6 +362,7 @@ export class Room {
 
   private finishTossupRound(): void {
     this.lastRoundAnswer = this.getAnswerLine();
+    this.readerBetweenPlayerId = this.getReaderPlayerId();
     this.clearRevealTimer();
     if (this.gameMode === "team") {
       if (this.teamOrderA.length)
@@ -376,6 +380,7 @@ export class Room {
   continueAfterBetween(): void {
     if (this.phase !== "between") return;
     this.lastRoundAnswer = null;
+    this.readerBetweenPlayerId = null;
     this.phase = "playing";
     this.advanceToNextTossup();
   }
@@ -438,6 +443,8 @@ export class Room {
       tossup: this.getPublicTossupState(),
       answer,
       readerPlayerId: readerId,
+      betweenControlsPlayerId:
+        this.phase === "between" ? this.readerBetweenPlayerId : null,
       activePlayerIdA: activeA,
       activePlayerIdB: activeB,
       eligibleBuzzIds: this.eligibleBuzzPlayerIds(),

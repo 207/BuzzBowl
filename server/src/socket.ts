@@ -26,6 +26,36 @@ function scheduleEmitGameState(io: Server, room: Room): void {
   });
 }
 
+function isHost(room: Room, hostSecret?: string): boolean {
+  return Boolean(hostSecret && room.verifyHost(hostSecret));
+}
+
+function isPlayingReader(room: Room, playerId?: string): boolean {
+  if (!playerId || !room.players.has(playerId)) return false;
+  return room.phase === "playing" && room.getReaderPlayerId() === playerId;
+}
+
+function isBetweenReader(room: Room, playerId?: string): boolean {
+  if (!playerId || !room.players.has(playerId)) return false;
+  return (
+    room.phase === "between" && room.readerBetweenPlayerId === playerId
+  );
+}
+
+function isHostOrPlayingReader(
+  room: Room,
+  msg: { hostSecret?: string; playerId?: string },
+): boolean {
+  return isHost(room, msg.hostSecret) || isPlayingReader(room, msg.playerId);
+}
+
+function isHostOrBetweenReader(
+  room: Room,
+  msg: { hostSecret?: string; playerId?: string },
+): boolean {
+  return isHost(room, msg.hostSecret) || isBetweenReader(room, msg.playerId);
+}
+
 export function registerSocketHandlers(io: Server): void {
   io.on("connection", (socket: Socket) => {
     socket.on("create_room", () => {
@@ -185,27 +215,27 @@ export function registerSocketHandlers(io: Server): void {
 
     socket.on(
       "pause_reveal",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrPlayingReader(room, msg)) return;
         room.pauseReveal();
       },
     );
 
     socket.on(
       "resume_reveal",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrPlayingReader(room, msg)) return;
         room.resumeReveal();
       },
     );
 
     socket.on(
       "show_full_question",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrPlayingReader(room, msg)) return;
         room.showFullQuestion();
       },
     );
@@ -218,36 +248,36 @@ export function registerSocketHandlers(io: Server): void {
 
     socket.on(
       "mark_correct",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrPlayingReader(room, msg)) return;
         room.markCorrect();
       },
     );
 
     socket.on(
       "mark_incorrect",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrPlayingReader(room, msg)) return;
         room.markIncorrect();
       },
     );
 
     socket.on(
       "skip_question",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrPlayingReader(room, msg)) return;
         room.skipQuestion();
       },
     );
 
     socket.on(
       "continue_game",
-      (msg: { roomCode: string; hostSecret: string }) => {
+      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        if (!room || !isHostOrBetweenReader(room, msg)) return;
         room.continueAfterBetween();
       },
     );

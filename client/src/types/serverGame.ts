@@ -43,6 +43,8 @@ export interface ServerGameState {
   answer: string | null;
   /** Designated reader for this tossup; cannot buzz; sees `answer` on their phone during play. */
   readerPlayerId: string | null;
+  /** On break: this player may emit `continue_game` (same person who read the tossup). */
+  betweenControlsPlayerId: string | null;
   activePlayerIdA: string | null;
   activePlayerIdB: string | null;
   eligibleBuzzIds: string[];
