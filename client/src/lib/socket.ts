@@ -12,3 +12,20 @@ export function getSocket(): Socket {
   }
   return _socket;
 }
+
+/** Reader-side controls (emitted with `roomCode` + `playerId` only). */
+export type ReaderControlEvent =
+  | "pause_reveal"
+  | "resume_reveal"
+  | "show_full_question"
+  | "mark_correct"
+  | "mark_incorrect"
+  | "skip_question"
+  | "continue_game";
+
+export function emitReaderControl(
+  event: ReaderControlEvent,
+  payload: { roomCode: string; playerId: string },
+): void {
+  getSocket().emit(event, payload);
+}

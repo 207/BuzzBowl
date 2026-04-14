@@ -26,6 +26,36 @@ function scheduleEmitGameState(io: Server, room: Room): void {
   });
 }
 
+function ensureRoomNotifications(io: Server, room: Room): void {
+  if (!room.notify) attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
+}
+
+function verifiedHostRoom(
+  msg: { roomCode: string; hostSecret: string },
+): Room | undefined {
+  const room = getRoom(msg.roomCode);
+  if (!room || !room.verifyHost(msg.hostSecret)) return undefined;
+  return room;
+}
+
+function runIfHostOrPlayingReader(
+  msg: { roomCode: string; hostSecret?: string; playerId?: string },
+  action: (room: Room) => void,
+): void {
+  const room = getRoom(msg.roomCode);
+  if (!room || !isHostOrPlayingReader(room, msg)) return;
+  action(room);
+}
+
+function runIfHostOrBetweenReader(
+  msg: { roomCode: string; hostSecret?: string; playerId?: string },
+  action: (room: Room) => void,
+): void {
+  const room = getRoom(msg.roomCode);
+  if (!room || !isHostOrBetweenReader(room, msg)) return;
+  action(room);
+}
+
 function isHost(room: Room, hostSecret?: string): boolean {
   return Boolean(hostSecret && room.verifyHost(hostSecret));
 }
@@ -60,7 +90,7 @@ export function registerSocketHandlers(io: Server): void {
   io.on("connection", (socket: Socket) => {
     socket.on("create_room", () => {
       const room = createRoom();
-      attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
+      ensureRoomNotifications(io, room);
       socket.join(room.code);
       socket.emit("host_created", {
         roomCode: room.code,
@@ -75,13 +105,12 @@ export function registerSocketHandlers(io: Server): void {
         msg: { roomCode: string; hostSecret: string },
         ack?: (res: { error?: string; ok?: boolean }) => void,
       ) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) {
+        const room = verifiedHostRoom(msg);
+        if (!room) {
           ack?.({ error: "invalid_host" });
           return;
         }
-        if (!room.notify)
-          attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
+        ensureRoomNotifications(io, room);
         socket.join(room.code);
         ack?.({ ok: true });
         scheduleEmitGameState(io, room);
@@ -103,8 +132,7 @@ export function registerSocketHandlers(io: Server): void {
           ack?.({ error: "game_already_started" });
           return;
         }
-        if (!room.notify)
-          attachRoomNotifier(room, (r) => scheduleEmitGameState(io, r));
+        ensureRoomNotifications(io, room);
         const p = room.addPlayer(msg.nickname, socket.id);
         socket.join(room.code);
         const meta = socket.data as { playerId?: string; roomCode?: string };
@@ -139,8 +167,8 @@ export function registerSocketHandlers(io: Server): void {
     socket.on(
       "set_game_mode",
       (msg: { roomCode: string; hostSecret: string; mode: GameMode }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        const room = verifiedHostRoom(msg);
+        if (!room) return;
         room.setGameMode(msg.mode);
       },
     );
@@ -153,8 +181,8 @@ export function registerSocketHandlers(io: Server): void {
         playerId: string;
         team: "A" | "B" | null;
       }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        const room = verifiedHostRoom(msg);
+        if (!room) return;
         room.setPlayerTeam(msg.playerId, msg.team);
       },
     );
@@ -166,8 +194,8 @@ export function registerSocketHandlers(io: Server): void {
         hostSecret: string;
         settings: Partial<GameSettings>;
       }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) return;
+        const room = verifiedHostRoom(msg);
+        if (!room) return;
         room.updateSettings(msg.settings);
       },
     );
@@ -185,8 +213,8 @@ export function registerSocketHandlers(io: Server): void {
           message?: string;
         }) => void,
       ) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !room.verifyHost(msg.hostSecret)) {
+        const room = verifiedHostRoom(msg);
+        if (!room) {
           ack?.({ error: "forbidden" });
           return;
         }
@@ -216,27 +244,21 @@ export function registerSocketHandlers(io: Server): void {
     socket.on(
       "pause_reveal",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrPlayingReader(room, msg)) return;
-        room.pauseReveal();
+        runIfHostOrPlayingReader(msg, (room) => room.pauseReveal());
       },
     );
 
     socket.on(
       "resume_reveal",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrPlayingReader(room, msg)) return;
-        room.resumeReveal();
+        runIfHostOrPlayingReader(msg, (room) => room.resumeReveal());
       },
     );
 
     socket.on(
       "show_full_question",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrPlayingReader(room, msg)) return;
-        room.showFullQuestion();
+        runIfHostOrPlayingReader(msg, (room) => room.showFullQuestion());
       },
     );
 
@@ -249,36 +271,28 @@ export function registerSocketHandlers(io: Server): void {
     socket.on(
       "mark_correct",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrPlayingReader(room, msg)) return;
-        room.markCorrect();
+        runIfHostOrPlayingReader(msg, (room) => room.markCorrect());
       },
     );
 
     socket.on(
       "mark_incorrect",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrPlayingReader(room, msg)) return;
-        room.markIncorrect();
+        runIfHostOrPlayingReader(msg, (room) => room.markIncorrect());
       },
     );
 
     socket.on(
       "skip_question",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrPlayingReader(room, msg)) return;
-        room.skipQuestion();
+        runIfHostOrPlayingReader(msg, (room) => room.skipQuestion());
       },
     );
 
     socket.on(
       "continue_game",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        const room = getRoom(msg.roomCode);
-        if (!room || !isHostOrBetweenReader(room, msg)) return;
-        room.continueAfterBetween();
+        runIfHostOrBetweenReader(msg, (room) => room.continueAfterBetween());
       },
     );
 

@@ -3,9 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { mapServerPlayers } from "@/lib/gameTypes";
-import { getSocket } from "@/lib/socket";
+import { GameOverScreen } from "@/components/GameOverScreen";
+import { emitReaderControl, getSocket, type ReaderControlEvent } from "@/lib/socket";
 import { playerKey } from "@/lib/roomStorage";
-import { Home, Trophy, Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
+import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
   const navigate = useNavigate();
@@ -37,9 +38,9 @@ const PlayGame = () => {
     [state?.players, playerId],
   );
 
-  const readerEmit = (event: string) => {
+  const emitAsReader = (event: ReaderControlEvent) => {
     if (!code || !playerId) return;
-    getSocket().emit(event, { roomCode: code, playerId });
+    emitReaderControl(event, { roomCode: code, playerId });
   };
 
   const buzz = () => {
@@ -77,44 +78,16 @@ const PlayGame = () => {
 
   if (state.phase === "ended") {
     const uiPlayers = mapServerPlayers(state.players, state.gameMode);
-    const sorted = [...uiPlayers].sort((a, b) => b.score - a.score);
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-6 text-center">
-          <Trophy className="w-16 h-16 text-accent mx-auto animate-float" />
-          <h1 className="text-4xl font-heading font-extrabold text-gradient">Game Over!</h1>
-          {state.gameMode === "team" ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="game-card p-4">
-                <p className="text-xs text-muted-foreground">{state.teamNames.A}</p>
-                <p className="text-2xl font-heading font-bold text-primary">{state.teamScoreA}</p>
-              </div>
-              <div className="game-card p-4">
-                <p className="text-xs text-muted-foreground">{state.teamNames.B}</p>
-                <p className="text-2xl font-heading font-bold text-accent">{state.teamScoreB}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sorted.map((p, i) => (
-                <div
-                  key={p.id}
-                  className={`game-card p-4 flex items-center gap-4 ${i === 0 ? "border-accent/50 glow-accent" : ""}`}
-                >
-                  <span className="text-2xl font-heading font-bold text-muted-foreground w-8">#{i + 1}</span>
-                  <span className="text-2xl">{p.avatar}</span>
-                  <span className="font-body font-semibold text-foreground flex-1 text-left">{p.name}</span>
-                  <span className="font-heading font-bold text-xl text-primary">{p.score}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <Button variant="hero" size="xl" className="w-full" onClick={() => navigate("/")}>
-            <Home className="w-5 h-5" />
-            Home
-          </Button>
-        </div>
-      </div>
+      <GameOverScreen
+        variant="player"
+        gameMode={state.gameMode}
+        teamNames={state.teamNames}
+        teamScoreA={state.teamScoreA}
+        teamScoreB={state.teamScoreB}
+        uiPlayers={uiPlayers}
+        onHome={() => navigate("/")}
+      />
     );
   }
 
@@ -138,7 +111,7 @@ const PlayGame = () => {
           </p>
         )}
         {canAdvance ? (
-          <Button variant="hero" size="xl" className="w-full max-w-sm" onClick={() => readerEmit("continue_game")}>
+          <Button variant="hero" size="xl" className="w-full max-w-sm" onClick={() => emitAsReader("continue_game")}>
             <FastForward className="w-5 h-5" />
             Next tossup
           </Button>
@@ -200,14 +173,14 @@ const PlayGame = () => {
                 className={revealToggleDisabled ? "opacity-50" : ""}
                 onClick={() => {
                   if (revealToggleDisabled) return;
-                  if (t.revealPaused) readerEmit("resume_reveal");
-                  else readerEmit("pause_reveal");
+                  if (t.revealPaused) emitAsReader("resume_reveal");
+                  else emitAsReader("pause_reveal");
                 }}
               >
                 {t.revealPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                 {revealToggleLabel}
               </Button>
-              <Button variant="outline" size="lg" onClick={() => readerEmit("show_full_question")}>
+              <Button variant="outline" size="lg" onClick={() => emitAsReader("show_full_question")}>
                 <Maximize2 className="w-4 h-4" />
                 Show full
               </Button>
@@ -218,16 +191,16 @@ const PlayGame = () => {
                   variant="default"
                   size="lg"
                   className="bg-emerald-600 hover:bg-emerald-500"
-                  onClick={() => readerEmit("mark_correct")}
+                  onClick={() => emitAsReader("mark_correct")}
                 >
                   <Check className="w-5 h-5" />
                   Correct
                 </Button>
-                <Button variant="destructive" size="lg" onClick={() => readerEmit("mark_incorrect")}>
+                <Button variant="destructive" size="lg" onClick={() => emitAsReader("mark_incorrect")}>
                   <X className="w-5 h-5" />
                   Incorrect
                 </Button>
-                <Button variant="glow" size="lg" onClick={() => readerEmit("skip_question")}>
+                <Button variant="glow" size="lg" onClick={() => emitAsReader("skip_question")}>
                   <SkipForward className="w-5 h-5" />
                   Skip
                 </Button>

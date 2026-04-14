@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { getSocket } from "@/lib/socket";
 import { hostKey } from "@/lib/roomStorage";
 import { toast } from "sonner";
+import { GameOverScreen } from "@/components/GameOverScreen";
 import PlayerList from "@/components/PlayerList";
 import { mapServerPlayers } from "@/lib/gameTypes";
 
@@ -45,41 +45,16 @@ const HostLive = () => {
   const uiPlayers = mapServerPlayers(state.players, state.gameMode);
 
   if (state.phase === "ended") {
-    const sorted = [...uiPlayers].sort((a, b) => b.score - a.score);
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-lg space-y-6 text-center">
-          <h1 className="text-4xl font-heading font-extrabold text-gradient">Game Over</h1>
-          {state.gameMode === "team" ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="game-card p-4">
-                <p className="text-sm text-muted-foreground">{state.teamNames.A}</p>
-                <p className="text-3xl font-heading font-bold text-primary">{state.teamScoreA}</p>
-              </div>
-              <div className="game-card p-4">
-                <p className="text-sm text-muted-foreground">{state.teamNames.B}</p>
-                <p className="text-3xl font-heading font-bold text-accent">{state.teamScoreB}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {sorted.map((p, i) => (
-                <div
-                  key={p.id}
-                  className={`game-card p-4 flex items-center gap-3 ${i === 0 ? "border-primary/40" : ""}`}
-                >
-                  <span className="text-2xl">{p.avatar}</span>
-                  <span className="flex-1 text-left font-body font-medium">{p.name}</span>
-                  <span className="font-heading font-bold text-primary">{p.score}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <Button variant="hero" size="xl" className="w-full" onClick={() => navigate("/")}>
-            Home
-          </Button>
-        </div>
-      </div>
+      <GameOverScreen
+        variant="host"
+        gameMode={state.gameMode}
+        teamNames={state.teamNames}
+        teamScoreA={state.teamScoreA}
+        teamScoreB={state.teamScoreB}
+        uiPlayers={uiPlayers}
+        onHome={() => navigate("/")}
+      />
     );
   }
 
