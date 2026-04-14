@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import confetti from "canvas-confetti";
 import { Home, RotateCcw, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Player } from "@/lib/gameTypes";
@@ -30,10 +32,60 @@ export function GameOverScreen({
   const isPlayer = variant === "player";
   const podium = sorted.slice(0, 3);
   const remaining = sorted.slice(3);
+  const isHost = variant === "host";
+
+  useEffect(() => {
+    if (!isHost) return;
+
+    const burst = () => {
+      confetti({
+        particleCount: 80,
+        spread: 75,
+        startVelocity: 45,
+        origin: { y: 0.75, x: 0.2 },
+      });
+      confetti({
+        particleCount: 80,
+        spread: 75,
+        startVelocity: 45,
+        origin: { y: 0.75, x: 0.8 },
+      });
+    };
+
+    burst();
+    const timeout = setTimeout(burst, 700);
+    return () => clearTimeout(timeout);
+  }, [isHost]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className={`w-full space-y-6 text-center ${isPlayer ? "max-w-md" : "max-w-lg"}`}>
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-12 overflow-hidden">
+      {isHost && (
+        <>
+          <div className="pointer-events-none absolute inset-0 opacity-25">
+            <div className="absolute left-[8%] top-[10%] text-4xl animate-float">🎆</div>
+            <div className="absolute right-[10%] top-[8%] text-5xl animate-float" style={{ animationDelay: "0.3s" }}>
+              🎇
+            </div>
+            <div className="absolute left-[18%] top-[28%] text-3xl animate-float" style={{ animationDelay: "0.8s" }}>
+              ✨
+            </div>
+            <div className="absolute right-[20%] top-[24%] text-3xl animate-float" style={{ animationDelay: "1.1s" }}>
+              ✨
+            </div>
+            <div className="absolute left-[12%] bottom-[20%] text-4xl animate-float" style={{ animationDelay: "0.5s" }}>
+              🎉
+            </div>
+            <div className="absolute right-[14%] bottom-[18%] text-4xl animate-float" style={{ animationDelay: "1.4s" }}>
+              🎊
+            </div>
+            <div className="absolute left-[45%] top-[6%] text-2xl animate-float" style={{ animationDelay: "0.9s" }}>
+              ✨
+            </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-hero opacity-50" />
+        </>
+      )}
+      <div className={`relative z-10 w-full space-y-6 text-center ${isPlayer ? "max-w-md" : "max-w-lg"}`}>
         {isPlayer ? (
           <Trophy className="w-16 h-16 text-accent mx-auto animate-float" />
         ) : null}
