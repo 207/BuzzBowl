@@ -27,16 +27,55 @@ The Vite app talks to the server URL from `VITE_SERVER_URL` (default `http://loc
 VITE_SERVER_URL=http://localhost:3001
 ```
 
-The server allows CORS from `CLIENT_ORIGIN` (default `http://localhost:5173`).
+The server allows CORS from `CLIENT_ORIGIN` (default `http://localhost:5173` for dev).
 
-## Production build
+## Production (Phase 1 — single host)
+
+One Node process serves **Socket.io + Express + the built SPA** from the same public origin. No separate Vercel step required.
+
+### Requirements
+
+1. **Build:** `npm install` then `npm run build` (builds `client/` then compiles `server/`).
+2. **Runtime:** `SERVE_CLIENT=1` so Express serves [`client/dist`](client/dist) and SPA fallback ([`server/src/index.ts`](server/src/index.ts)).
+3. **Network:** outbound HTTPS to `https://qbreader.org/api`.
+4. **Browser origin:** `CLIENT_ORIGIN` must match the URL users open (scheme + host + port, no trailing slash). If unset, the server tries, in order: `RENDER_EXTERNAL_URL` (Render), `RAILWAY_PUBLIC_DOMAIN` (Railway), `FLY_APP_NAME` (Fly.io default hostname). Local dev falls back to `http://localhost:5173`.
+5. **Client socket URL:** With Phase 1, **omit** `VITE_SERVER_URL` in the production build so [`client/src/lib/socket.ts`](client/src/lib/socket.ts) connects to the **same host** as the page. Only set `VITE_SERVER_URL` for split-origin (Phase 2) deploys.
+
+### Run locally like production
+
+```bash
+npm run build
+set SERVE_CLIENT=1&& set CLIENT_ORIGIN=http://localhost:3001&& npm run start -w server
+```
+
+(PowerShell: `$env:SERVE_CLIENT=1; $env:CLIENT_ORIGIN='http://localhost:3001'; npm run start -w server`)
+
+Open `http://localhost:3001` — UI and WebSocket share one origin.
+
+### Render.com (quick path)
+
+1. New **Web Service**, connect this repo, same settings as [`render.yaml`](render.yaml) (or use **Blueprint** and point at `render.yaml`).
+2. **Build command:** `npm install && npm run build`
+3. **Start command:** `SERVE_CLIENT=1 npm run start -w server`
+4. **Health check path:** `/health`
+5. **Environment:** set `SERVE_CLIENT=1` (already in blueprint). Optionally set `CLIENT_ORIGIN` to your canonical URL; if omitted on Render, `RENDER_EXTERNAL_URL` is used automatically.
+6. **Custom domain:** set `CLIENT_ORIGIN` to `https://your.domain` after you attach DNS.
+
+See [`.env.example`](.env.example) for variable reference.
+
+### Caveats (v1)
+
+- **In-memory rooms** — restart or deploy clears active games.
+- **Free tiers** — may spin down after idle (first request cold start); fine for playtests, not ideal for always-on tournaments.
+
+## Production build (CI or image)
 
 ```bash
 npm run build
 npm run start -w server
 ```
 
-Run the server with access to the internet so it can reach `https://qbreader.org/api`.
+With `SERVE_CLIENT=1` and correct `CLIENT_ORIGIN` / platform URL. The host must reach `https://qbreader.org/api`.
 
 ## v1 scope (implemented)
 
