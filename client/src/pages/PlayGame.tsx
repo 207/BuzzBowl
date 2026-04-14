@@ -136,7 +136,7 @@ const PlayGame = () => {
     const revealToggleLabel = t.revealComplete ? "Reveal done" : t.revealPaused ? "Resume" : "Pause";
 
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex min-h-dvh flex-col bg-background">
         <div className="border-b border-border px-4 py-3 text-center text-sm text-muted-foreground font-body">
           {state.gameMode === "team" ? (
             <span>
@@ -156,6 +156,30 @@ const PlayGame = () => {
             Watching this matchup — buzzer off
           </p>
         )}
+
+        <div className="flex flex-shrink-0 flex-col gap-2 px-4 pt-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground font-body">
+            <span>
+              Tossup {state.currentTossupIndex + 1} / {state.totalTossups}
+            </span>
+            {state.gameMode === "team" && (
+              <span>
+                {state.players.find((p) => p.id === state.activePlayerIdA)?.nickname ?? "—"} vs{" "}
+                {state.players.find((p) => p.id === state.activePlayerIdB)?.nickname ?? "—"}
+              </span>
+            )}
+          </div>
+          <div className="game-card max-h-[min(42vh,20rem)] overflow-y-auto p-4 sm:min-h-[10rem] sm:p-6 md:max-h-none md:min-h-[12rem]">
+            <p className="text-base font-body leading-relaxed text-foreground sm:text-lg md:text-xl">
+              {t.revealedText}
+              {!t.revealComplete ? <span className="text-muted-foreground"> ▌</span> : null}
+            </p>
+            {t.revealPaused ? (
+              <p className="mt-3 text-sm text-primary font-body">Paused</p>
+            ) : null}
+          </div>
+        </div>
+
         {imReader && state.answer ? (
           <div className="mx-4 mt-4 game-card border-primary/30 p-5">
             <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Answer line</p>
@@ -209,7 +233,7 @@ const PlayGame = () => {
           </div>
         )}
 
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4 pb-12">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-8 pt-4">
           {iBuzzed ? (
             <p className="text-3xl font-heading font-bold text-primary">You buzzed!</p>
           ) : canBuzz ? (
