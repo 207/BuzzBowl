@@ -8,7 +8,7 @@ import { difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
 import { hostKey, playerKey, readHostSetup } from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
-import { Play, ArrowLeft } from "lucide-react";
+import { Play, ArrowLeft, Shuffle, X } from "lucide-react";
 import { toast } from "sonner";
 
 const Lobby = () => {
@@ -65,6 +65,16 @@ const Lobby = () => {
     }
   }, [gameState, code, isHost, navigate]);
 
+  useEffect(() => {
+    if (!gameState || isHost || !playerId) return;
+    const stillPresent = gameState.players.some((p) => p.id === playerId);
+    if (!stillPresent) {
+      sessionStorage.removeItem(playerKey(code));
+      toast.error("Host removed you from this lobby.");
+      navigate(`/join/${code}`);
+    }
+  }, [gameState, isHost, playerId, code, navigate]);
+
   const uiMode = gameState?.gameMode === "team" ? "teams" : "ffa";
   const uiPlayers = gameState
     ? mapServerPlayers(gameState.players, gameState.gameMode)
@@ -108,6 +118,23 @@ const Lobby = () => {
     });
   };
 
+  const kickPlayer = (pid: string) => {
+    if (!code || !hostSecret) return;
+    getSocket().emit("kick_player", {
+      roomCode: code,
+      hostSecret,
+      playerId: pid,
+    });
+  };
+
+  const randomizeTeams = () => {
+    if (!code || !hostSecret) return;
+    getSocket().emit("randomize_teams", {
+      roomCode: code,
+      hostSecret,
+    });
+  };
+
   if (!code) {
     return <p className="p-6 text-foreground">Invalid room.</p>;
   }
@@ -135,20 +162,45 @@ const Lobby = () => {
 
         <PlayerList players={uiPlayers} mode={uiMode} />
 
-        {isHost && gameState?.gameMode === "team" && gameState.players.length > 0 && (
-          <div className="game-card p-4 space-y-2">
-            <p className="text-sm font-body text-muted-foreground">Assign teams (tap name)</p>
-            <div className="flex flex-wrap gap-2">
+        {isHost && gameState?.players.length > 0 && (
+          <div className="game-card p-4 space-y-3">
+            <p className="text-sm font-body text-muted-foreground">
+              Host controls: click a player to assign team (team mode), hover row to kick.
+            </p>
+            {gameState.gameMode === "team" && (
+              <Button variant="outline" size="sm" className="w-full" onClick={randomizeTeams}>
+                <Shuffle className="w-4 h-4" />
+                Randomize teams
+              </Button>
+            )}
+            <div className="space-y-2">
               {gameState.players.map((p) => (
-                <button
+                <div
                   key={p.id}
-                  type="button"
-                  onClick={() => cycleTeam(p.id, p.team)}
-                  className="rounded-lg bg-muted px-3 py-2 text-sm font-body hover:bg-muted/80"
+                  className="group flex items-center gap-2 rounded-lg bg-muted/70 border border-border/50 px-3 py-2"
                 >
-                  {p.nickname}:{" "}
-                  {p.team === null ? "—" : p.team === "A" ? gameState.teamNames.A : gameState.teamNames.B}
-                </button>
+                  {gameState.gameMode === "team" ? (
+                    <button
+                      type="button"
+                      onClick={() => cycleTeam(p.id, p.team)}
+                      className="flex-1 text-left text-sm font-body hover:text-foreground transition-colors"
+                    >
+                      {p.nickname}:{" "}
+                      {p.team === null ? "—" : p.team === "A" ? gameState.teamNames.A : gameState.teamNames.B}
+                    </button>
+                  ) : (
+                    <span className="flex-1 text-left text-sm font-body">{p.nickname}</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => kickPlayer(p.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    aria-label={`Kick ${p.nickname}`}
+                    title={`Kick ${p.nickname}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>

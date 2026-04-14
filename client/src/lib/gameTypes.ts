@@ -10,6 +10,11 @@ export interface Player {
   team?: number;
   score: number;
   avatar: string;
+  stats: {
+    buzzed: number;
+    correct: number;
+    wrong: number;
+  };
 }
 
 export const AVATARS = [
@@ -36,6 +41,11 @@ export function mapServerPlayers(
     name: p.nickname,
     score: p.score,
     avatar: AVATARS[i % AVATARS.length],
+    stats: {
+      buzzed: p.buzzCount,
+      correct: p.correctCount,
+      wrong: p.wrongCount,
+    },
     team:
       gameMode === "team"
         ? p.team === "A"

@@ -8,6 +8,7 @@ The **web UI** lives under `client/` and is based on the `quiz-party-main` desig
 
 - [Architecture (diagrams)](docs/architecture.md)
 - [Backlog / revisit later](docs/BACKLOG.md)
+- **[Deploy on Render (step-by-step)](docs/deploy-render.md)** — first production deploy
 
 Clone or rename your local folder however you like (e.g. `BuzzBowl`); npm workspace names are independent of the folder name.
 
@@ -52,14 +53,11 @@ set SERVE_CLIENT=1&& set CLIENT_ORIGIN=http://localhost:3001&& npm run start -w 
 
 Open `http://localhost:3001` — UI and WebSocket share one origin.
 
-### Render.com (quick path)
+### Render.com
 
-1. New **Web Service**, connect this repo, same settings as [`render.yaml`](render.yaml) (or use **Blueprint** and point at `render.yaml`).
-2. **Build command:** `npm install && npm run build`
-3. **Start command:** `SERVE_CLIENT=1 npm run start -w server`
-4. **Health check path:** `/health`
-5. **Environment:** set `SERVE_CLIENT=1` (already in blueprint). Optionally set `CLIENT_ORIGIN` to your canonical URL; if omitted on Render, `RENDER_EXTERNAL_URL` is used automatically.
-6. **Custom domain:** set `CLIENT_ORIGIN` to `https://your.domain` after you attach DNS.
+Follow **[docs/deploy-render.md](docs/deploy-render.md)** for a full click-by-click walkthrough (Blueprint vs Web Service, env vars, logs, phones).
+
+Quick reference: [`render.yaml`](render.yaml), build `npm install && npm run build`, start `SERVE_CLIENT=1 npm run start -w server`, health `/health`, leave `CLIENT_ORIGIN` unset on Render until you use a custom domain.
 
 See [`.env.example`](.env.example) for variable reference.
 

@@ -208,6 +208,10 @@ const PlayGame = () => {
                 <Maximize2 className="w-4 h-4" />
                 Show full
               </Button>
+              <Button variant="glow" size="lg" onClick={() => emitAsReader("skip_question")}>
+                <SkipForward className="w-4 h-4" />
+                Skip
+              </Button>
             </div>
             {t.buzzPhase === "locked" && (
               <div className="flex flex-wrap gap-2 justify-center">
@@ -223,10 +227,6 @@ const PlayGame = () => {
                 <Button variant="destructive" size="lg" onClick={() => emitAsReader("mark_incorrect")}>
                   <X className="w-5 h-5" />
                   Incorrect
-                </Button>
-                <Button variant="glow" size="lg" onClick={() => emitAsReader("skip_question")}>
-                  <SkipForward className="w-5 h-5" />
-                  Skip
                 </Button>
               </div>
             )}

@@ -16,7 +16,11 @@ const GameCodeDisplay = ({ code }: GameCodeDisplayProps) => {
   };
 
   return (
-    <div className="game-card p-6 text-center space-y-3">
+    <button
+      type="button"
+      onClick={copyCode}
+      className="game-card w-full p-6 text-center space-y-3 hover:border-primary/40 hover:bg-muted/20"
+    >
       <p className="text-sm text-muted-foreground font-body uppercase tracking-wider">
         Game Code
       </p>
@@ -24,17 +28,14 @@ const GameCodeDisplay = ({ code }: GameCodeDisplayProps) => {
         <span className="text-4xl font-heading font-bold tracking-[0.3em] text-gradient">
           {code}
         </span>
-        <button
-          onClick={copyCode}
-          className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground"
-        >
+        <span className="p-2 rounded-lg bg-muted transition-colors text-muted-foreground">
           {copied ? <Check className="w-5 h-5 text-accent" /> : <Copy className="w-5 h-5" />}
-        </button>
+        </span>
       </div>
       <p className="text-xs text-muted-foreground">
         {copied ? "Link copied!" : "Click to copy invite link"}
       </p>
-    </div>
+    </button>
   );
 };
 

@@ -7,6 +7,9 @@ export interface ServerPlayer {
   nickname: string;
   team: "A" | "B" | null;
   score: number;
+  buzzCount: number;
+  correctCount: number;
+  wrongCount: number;
 }
 
 export interface ServerGameSettings {

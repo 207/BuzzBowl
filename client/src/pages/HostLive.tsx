@@ -31,6 +31,11 @@ const HostLive = () => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
   }, [state?.phase, code, navigate]);
 
+  const emitHost = (event: string) => {
+    if (!code || !hostSecret) return;
+    getSocket().emit(event, { roomCode: code, hostSecret });
+  };
+
   if (!code || !hostSecret) return null;
 
   if (!state) {
@@ -53,6 +58,7 @@ const HostLive = () => {
         teamScoreA={state.teamScoreA}
         teamScoreB={state.teamScoreB}
         uiPlayers={uiPlayers}
+        onRestart={() => emitHost("restart_game")}
         onHome={() => navigate("/")}
       />
     );
