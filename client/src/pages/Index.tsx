@@ -27,16 +27,16 @@ const Index = () => {
       <div className="absolute top-1/2 left-[5%] text-3xl animate-float opacity-10 select-none" style={{ animationDelay: "2s" }}>✨</div>
 
       {/* Main content */}
-      <main className="relative z-10 flex min-h-0 w-full min-w-0 flex-1 items-center justify-center px-4 py-20">
-        <div className="mx-auto w-full max-w-xl space-y-10 text-center">
+      <main className="relative z-10 flex min-h-0 w-full min-w-0 flex-1 items-center justify-center px-4 py-10 sm:py-14 md:py-16">
+        <div className="mx-auto w-full max-w-xl space-y-7 sm:space-y-8 text-center">
           {/* Logo / Title */}
-          <div className="flex flex-col items-center space-y-4 text-center">
+          <div className="flex flex-col items-center space-y-3 sm:space-y-4 text-center">
             <div className="inline-flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-5 py-2 text-sm text-primary font-body font-medium">
               <span className="text-lg">🎮</span>
               Quiz bowl party game
             </div>
 
-            <h1 className="flex w-full justify-center text-6xl md:text-8xl font-heading font-extrabold leading-[0.95] tracking-tight">
+            <h1 className="flex w-full justify-center text-5xl sm:text-6xl md:text-7xl font-heading font-extrabold leading-[0.98] tracking-tight">
               <span className="text-gradient inline-block w-fit">BuzzBowl</span>
             </h1>
 
