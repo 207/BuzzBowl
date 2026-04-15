@@ -23,6 +23,7 @@ const HostGame = () => {
 
   const [name, setName] = useState("");
   const [mode, setMode] = useState<GameMode>("ffa");
+  const [playMode, setPlayMode] = useState<"house" | "remote">("house");
   const [difficulty, setDifficulty] = useState("easy");
   const [category, setCategory] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
@@ -48,6 +49,7 @@ const HostGame = () => {
       sessionStorage.setItem(hostKey(code), msg.hostSecret);
       const setup: HostSetupPayload = {
         mode,
+        playMode,
         difficulty,
         category,
         questionCount,
@@ -122,6 +124,36 @@ const HostGame = () => {
                 icon={<Users className="w-5 h-5" />}
                 label="Teams"
               />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-body font-medium text-foreground">Play Mode</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPlayMode("house")}
+                className={`rounded-xl border px-3 py-3 text-left transition-all ${
+                  playMode === "house"
+                    ? "border-primary/60 bg-primary/10 text-foreground"
+                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <p className="font-body text-sm font-semibold">House party</p>
+                <p className="mt-1 text-xs">Question on host screen; reader controls from phone.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlayMode("remote")}
+                className={`rounded-xl border px-3 py-3 text-left transition-all ${
+                  playMode === "remote"
+                    ? "border-primary/60 bg-primary/10 text-foreground"
+                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <p className="font-body text-sm font-semibold">Remote play</p>
+                <p className="mt-1 text-xs">No TV route during game; everyone plays on phone.</p>
+              </button>
             </div>
           </div>
 

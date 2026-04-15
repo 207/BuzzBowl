@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GameCodeDisplay from "@/components/GameCodeDisplay";
 import PlayerList from "@/components/PlayerList";
+import { compressSelfieFile } from "@/lib/compressSelfie";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
@@ -13,7 +14,7 @@ import {
   socketSettingsFromHostSetup,
 } from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
-import { Play, ArrowLeft, Shuffle, X } from "lucide-react";
+import { Play, ArrowLeft, Shuffle, X, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 const Lobby = () => {
@@ -23,11 +24,23 @@ const Lobby = () => {
   const gameState = useServerGameState(code);
 
   const hostSecret = useMemo(() => (code ? sessionStorage.getItem(hostKey(code)) : null), [code]);
-  const playerId = useMemo(() => (code ? sessionStorage.getItem(playerKey(code)) : null), [code]);
+  const [playerId, setPlayerId] = useState<string | null>(() =>
+    code ? sessionStorage.getItem(playerKey(code)) : null,
+  );
   const isHost = Boolean(hostSecret);
   const setup = useMemo(() => readHostSetup(code), [code]);
+  const isRemoteMode = (setup?.playMode ?? gameState?.settings.playMode ?? "house") === "remote";
 
   const [startError, setStartError] = useState<string | null>(null);
+  const [hostJoinName, setHostJoinName] = useState("");
+  const [hostJoinBusy, setHostJoinBusy] = useState(false);
+  const [hostSelfie, setHostSelfie] = useState<string | null>(null);
+  const [hostSelfieBusy, setHostSelfieBusy] = useState(false);
+
+  useEffect(() => {
+    if (!code) return;
+    setPlayerId(sessionStorage.getItem(playerKey(code)));
+  }, [code]);
 
   useEffect(() => {
     if (!code) return;
@@ -36,6 +49,9 @@ const Lobby = () => {
       s.emit("host_join", { roomCode: code, hostSecret }, (res: { error?: string }) => {
         if (res?.error) toast.error("Could not reconnect as host.");
       });
+      if (playerId) {
+        s.emit("player_identify", { roomCode: code, playerId }, () => {});
+      }
       const st = readHostSetup(code);
       if (st) {
         s.emit("set_game_mode", {
@@ -59,7 +75,10 @@ const Lobby = () => {
   useEffect(() => {
     if (!gameState || !code) return;
     if (gameState.phase !== "lobby") {
-      if (isHost) navigate(`/host/game/${code}`);
+      if (isHost) {
+        if (gameState.settings.playMode === "remote") navigate(`/play/${code}`);
+        else navigate(`/host/game/${code}`);
+      }
       else navigate(`/play/${code}`);
     }
   }, [gameState, code, isHost, navigate]);
@@ -78,6 +97,7 @@ const Lobby = () => {
   const uiPlayers = gameState
     ? mapServerPlayers(gameState.players, gameState.gameMode)
     : [];
+  const needsRemoteHostPlayer = isHost && isRemoteMode && !playerId;
 
   const handleStart = () => {
     if (!code || !hostSecret || !setup) return;
@@ -96,6 +116,51 @@ const Lobby = () => {
         else if (res?.error === "fetch_failed")
           setStartError(res.message ?? "Could not reach QB Reader.");
         else if (res?.error) setStartError("Could not start.");
+      },
+    );
+  };
+
+  const onPickHostSelfie = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    setHostSelfieBusy(true);
+    try {
+      const dataUrl = await compressSelfieFile(file);
+      if (!dataUrl) toast.error("Could not use that photo. Try another image.");
+      else setHostSelfie(dataUrl);
+    } finally {
+      setHostSelfieBusy(false);
+    }
+  };
+
+  const handleHostJoinAsPlayer = () => {
+    if (!code) return;
+    if (!hostJoinName.trim()) {
+      toast.error("Enter your player name first.");
+      return;
+    }
+    setHostJoinBusy(true);
+    getSocket().emit(
+      "player_join",
+      {
+        roomCode: code,
+        nickname: hostJoinName.trim(),
+        ...(hostSelfie ? { avatarDataUrl: hostSelfie } : {}),
+      },
+      (res: { error?: string; playerId?: string }) => {
+        setHostJoinBusy(false);
+        if (res.error) {
+          if (res.error === "room_not_found") toast.error("Room not found.");
+          else if (res.error === "game_already_started") toast.error("Game already started.");
+          else toast.error("Could not join as player.");
+          return;
+        }
+        if (res.playerId) {
+          sessionStorage.setItem(playerKey(code), res.playerId);
+          setPlayerId(res.playerId);
+          toast.success("Joined as player.");
+        }
       },
     );
   };
@@ -155,6 +220,47 @@ const Lobby = () => {
 
         <PlayerList players={uiPlayers} mode={uiMode} />
 
+        {needsRemoteHostPlayer && (
+          <div className="game-card p-4 space-y-3">
+            <p className="text-sm font-body text-muted-foreground">
+              Remote mode requires the host to join as a player before starting.
+            </p>
+            <input
+              type="text"
+              value={hostJoinName}
+              onChange={(e) => setHostJoinName(e.target.value)}
+              placeholder="Your player name"
+              maxLength={24}
+              className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <div className="flex items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-body">
+                <Camera className="h-4 w-4" />
+                {hostSelfieBusy ? "Processing…" : hostSelfie ? "Change selfie" : "Add selfie"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                  onChange={onPickHostSelfie}
+                  disabled={hostSelfieBusy}
+                />
+              </label>
+              {hostSelfie ? (
+                <img src={hostSelfie} alt="" className="h-10 w-10 rounded-full object-cover ring-1 ring-border" />
+              ) : null}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleHostJoinAsPlayer}
+              disabled={hostJoinBusy || hostSelfieBusy || !hostJoinName.trim()}
+            >
+              Join this room as player
+            </Button>
+          </div>
+        )}
+
         {isHost && gameState?.players.length > 0 && (
           <div className="game-card p-4 space-y-3">
             <p className="text-sm font-body text-muted-foreground">
@@ -207,12 +313,17 @@ const Lobby = () => {
               size="xl"
               className="w-full"
               onClick={handleStart}
-              disabled={!gameState || gameState.players.length < 1}
+              disabled={!gameState || gameState.players.length < 1 || needsRemoteHostPlayer}
             >
               <Play className="w-5 h-5" />
               Start Game ({gameState?.players.length ?? 0} player
               {(gameState?.players.length ?? 0) !== 1 ? "s" : ""})
             </Button>
+            {needsRemoteHostPlayer ? (
+              <p className="text-xs text-center text-muted-foreground font-body">
+                Join as player to start remote mode.
+              </p>
+            ) : null}
           </>
         )}
 

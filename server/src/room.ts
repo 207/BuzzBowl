@@ -15,6 +15,7 @@ const genPlayerId = customAlphabet(roomCodeAlphabet, 10);
 
 const defaultSettings: GameSettings = {
   questionCount: 10,
+  playMode: "house",
   difficulties: [],
   category: "",
   correctPoints: 10,
@@ -201,6 +202,7 @@ export class Room {
     merged.negPoints = clampInt(merged.negPoints, 0, 500);
     merged.answerCountdownSeconds = clampInt(merged.answerCountdownSeconds, 0, 120);
     merged.questionCount = clampInt(merged.questionCount, 1, 50);
+    merged.playMode = merged.playMode === "remote" ? "remote" : "house";
     this.settings = merged;
     this.push();
   }

@@ -41,7 +41,7 @@ const Index = () => {
             </h1>
 
             <p className="text-base md:text-lg text-muted-foreground font-body max-w-md mx-auto leading-relaxed">
-              Host on the big screen, buzz in from your phone. Free-for-all or teams — you pick.
+              Choose house party mode (TV + phones) or remote mode (all phones, no TV route).
             </p>
           </div>
 

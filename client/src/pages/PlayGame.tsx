@@ -128,6 +128,8 @@ const PlayGame = () => {
   if (state.phase === "playing" && state.tossup) {
     const t = state.tossup;
     const imReader = state.readerPlayerId === playerId;
+    const isHouseMode = state.settings.playMode === "house";
+    const showQuestionCard = !isHouseMode || imReader;
     const eligible = state.eligibleBuzzIds?.includes(playerId) ?? false;
     const canBuzz = t.buzzPhase === "open" && eligible;
     const iBuzzed = t.buzzPhase === "locked" && t.buzzWinnerId === playerId;
@@ -170,15 +172,21 @@ const PlayGame = () => {
               </span>
             )}
           </div>
-          <div className="game-card max-h-[min(42vh,20rem)] overflow-y-auto p-4 sm:min-h-[10rem] sm:p-6 md:max-h-none md:min-h-[12rem]">
-            <p className="text-base font-body leading-relaxed text-foreground sm:text-lg md:text-xl">
-              {t.revealedText}
-              {!t.revealComplete ? <span className="text-muted-foreground"> ▌</span> : null}
-            </p>
-            {t.revealPaused ? (
-              <p className="mt-3 text-sm text-primary font-body">Paused</p>
-            ) : null}
-          </div>
+          {showQuestionCard ? (
+            <div className="game-card max-h-[min(42vh,20rem)] overflow-y-auto p-4 sm:min-h-[10rem] sm:p-6 md:max-h-none md:min-h-[12rem]">
+              <p className="text-base font-body leading-relaxed text-foreground sm:text-lg md:text-xl">
+                {t.revealedText}
+                {!t.revealComplete ? <span className="text-muted-foreground"> ▌</span> : null}
+              </p>
+              {t.revealPaused ? (
+                <p className="mt-3 text-sm text-primary font-body">Paused</p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground font-body">
+              Question is shown on the host screen in house party mode.
+            </div>
+          )}
         </div>
 
         {imReader && state.answer ? (

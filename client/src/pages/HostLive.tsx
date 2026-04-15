@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { getSocket } from "@/lib/socket";
-import { hostKey } from "@/lib/roomStorage";
+import { hostKey, playerKey } from "@/lib/roomStorage";
 import { toast } from "sonner";
 import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { GameOverScreen } from "@/components/GameOverScreen";
@@ -30,7 +30,12 @@ const HostLive = () => {
 
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
-  }, [state?.phase, code, navigate]);
+    if (state?.settings.playMode === "remote") {
+      const pid = sessionStorage.getItem(playerKey(code));
+      if (pid) navigate(`/play/${code}`);
+      else navigate(`/join/${code}`);
+    }
+  }, [state?.phase, state?.settings.playMode, code, navigate]);
 
   const emitHost = (event: string) => {
     if (!code || !hostSecret) return;

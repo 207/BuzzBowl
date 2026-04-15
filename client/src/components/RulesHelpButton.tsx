@@ -28,6 +28,19 @@ const RulesHelpButton = () => (
       </DialogHeader>
       <div className="space-y-4 text-sm font-body text-foreground pr-1">
         <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Choose a play mode</h3>
+          <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
+            <li>
+              <span className="text-foreground">House party</span>: question text is on the host screen; non-readers buzz
+              from their phones.
+            </li>
+            <li>
+              <span className="text-foreground">Remote play</span>: no TV screen during gameplay; everyone (including the
+              host) plays from a phone.
+            </li>
+          </ul>
+        </section>
+        <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Getting started</h3>
           <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
             <li>
@@ -37,6 +50,7 @@ const RulesHelpButton = () => (
               <span className="text-foreground">Players</span> join with a name. You can add an optional selfie to show on
               the host&apos;s big screen.
             </li>
+            <li>In remote mode, the host also joins as a player from the lobby before starting.</li>
             <li>The host picks teams (if needed) and starts the game when everyone is ready.</li>
           </ul>
         </section>

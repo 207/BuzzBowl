@@ -15,6 +15,7 @@ export interface ServerPlayer {
 
 export interface ServerGameSettings {
   questionCount: number;
+  playMode: "house" | "remote";
   difficulties: number[];
   category: string;
   correctPoints: number;
