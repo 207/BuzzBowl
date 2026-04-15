@@ -10,6 +10,7 @@ import JoinGame from "./pages/JoinGame.tsx";
 import Lobby from "./pages/Lobby.tsx";
 import PlayGame from "./pages/PlayGame.tsx";
 import HomeButton from "./components/HomeButton.tsx";
+import RulesHelpButton from "./components/RulesHelpButton.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <HomeButton />
+        <RulesHelpButton />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/host" element={<HostGame />} />

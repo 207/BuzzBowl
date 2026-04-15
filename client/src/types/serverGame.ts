@@ -10,6 +10,7 @@ export interface ServerPlayer {
   buzzCount: number;
   correctCount: number;
   wrongCount: number;
+  avatarDataUrl?: string;
 }
 
 export interface ServerGameSettings {
@@ -17,7 +18,9 @@ export interface ServerGameSettings {
   difficulties: number[];
   category: string;
   correctPoints: number;
+  correctMidRevealPoints: number;
   negPoints: number;
+  answerCountdownSeconds: number;
 }
 
 export interface ServerTossup {
@@ -28,6 +31,7 @@ export interface ServerTossup {
   buzzPhase: "open" | "locked";
   buzzWinnerId: string | null;
   buzzWinnerName: string | null;
+  answerDeadlineMs: number | null;
 }
 
 export interface ServerGameState {

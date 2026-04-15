@@ -120,7 +120,7 @@ export function registerSocketHandlers(io: Server): void {
     socket.on(
       "player_join",
       (
-        msg: { roomCode: string; nickname: string },
+        msg: { roomCode: string; nickname: string; avatarDataUrl?: string },
         ack?: (res: { error?: string; playerId?: string }) => void,
       ) => {
         const room = getRoom(msg.roomCode);
@@ -133,7 +133,13 @@ export function registerSocketHandlers(io: Server): void {
           return;
         }
         ensureRoomNotifications(io, room);
-        const p = room.addPlayer(msg.nickname, socket.id);
+        let avatar: string | null = null;
+        const raw = msg.avatarDataUrl;
+        if (typeof raw === "string" && raw.startsWith("data:image/")) {
+          const trimmed = raw.slice(0, 140_000);
+          if (trimmed.length === raw.length) avatar = trimmed;
+        }
+        const p = room.addPlayer(msg.nickname, socket.id, avatar);
         socket.join(room.code);
         const meta = socket.data as { playerId?: string; roomCode?: string };
         meta.playerId = p.id;

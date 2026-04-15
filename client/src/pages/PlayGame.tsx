@@ -6,6 +6,7 @@ import { mapServerPlayers } from "@/lib/gameTypes";
 import { GameOverScreen } from "@/components/GameOverScreen";
 import { emitReaderControl, getSocket, type ReaderControlEvent } from "@/lib/socket";
 import { playerKey } from "@/lib/roomStorage";
+import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
@@ -213,6 +214,12 @@ const PlayGame = () => {
                 Skip
               </Button>
             </div>
+            {t.buzzPhase === "locked" && (t.answerDeadlineMs ?? null) != null && (
+              <AnswerCountdown
+                answerDeadlineMs={t.answerDeadlineMs}
+                className="flex flex-col items-center justify-center rounded-2xl border border-primary/40 bg-primary/10 py-4"
+              />
+            )}
             {t.buzzPhase === "locked" && (
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button
@@ -234,8 +241,27 @@ const PlayGame = () => {
         )}
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-8 pt-4">
+          {t.buzzPhase === "locked" &&
+            !imReader &&
+            !iBuzzed &&
+            (t.answerDeadlineMs ?? null) != null && (
+              <AnswerCountdown
+                compact
+                answerDeadlineMs={t.answerDeadlineMs}
+                className="w-full max-w-sm flex flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 py-3"
+              />
+            )}
           {iBuzzed ? (
-            <p className="text-3xl font-heading font-bold text-primary">You buzzed!</p>
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-3xl font-heading font-bold text-primary">You buzzed!</p>
+              {(t.answerDeadlineMs ?? null) != null && (
+                <AnswerCountdown
+                  compact
+                  answerDeadlineMs={t.answerDeadlineMs}
+                  className="w-full max-w-sm flex flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 py-3"
+                />
+              )}
+            </div>
           ) : canBuzz ? (
             <button
               type="button"

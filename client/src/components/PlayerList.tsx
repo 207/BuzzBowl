@@ -1,4 +1,5 @@
 import { Player, GameMode } from "@/lib/gameTypes";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 
 interface PlayerListProps {
   players: Player[];
@@ -62,7 +63,7 @@ const TeamColumn = ({
 
 const PlayerChip = ({ player }: { player: Player }) => (
   <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-    <span className="text-xl">{player.avatar}</span>
+    <PlayerAvatar player={player} size="chip" />
     <span className="font-body font-medium text-sm text-foreground truncate">
       {player.name}
     </span>

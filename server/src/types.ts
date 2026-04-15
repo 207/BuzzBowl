@@ -12,6 +12,8 @@ export interface Player {
   buzzCount: number;
   correctCount: number;
   wrongCount: number;
+  /** Optional join selfie (data URL), session-only */
+  avatarDataUrl?: string | null;
 }
 
 export interface TossupDTO {
@@ -26,8 +28,13 @@ export interface GameSettings {
   difficulties: number[];
   /** Comma-separated or single category; empty = any */
   category: string;
+  /** Points when marked correct after the tossup is fully revealed */
   correctPoints: number;
+  /** Points when marked correct on an interrupt (before full reveal) */
+  correctMidRevealPoints: number;
   negPoints: number;
+  /** After buzz: seconds before auto-incorrect (0 = disabled) */
+  answerCountdownSeconds: number;
 }
 
 export interface PublicTossupState {
@@ -38,4 +45,6 @@ export interface PublicTossupState {
   buzzPhase: BuzzPhase;
   buzzWinnerId: string | null;
   buzzWinnerName: string | null;
+  /** Wall-clock ms when answer countdown ends (auto-incorrect); null if none */
+  answerDeadlineMs: number | null;
 }

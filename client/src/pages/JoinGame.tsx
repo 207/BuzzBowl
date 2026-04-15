@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { compressSelfieFile } from "@/lib/compressSelfie";
 import { getSocket } from "@/lib/socket";
 import { playerKey } from "@/lib/roomStorage";
-import { ArrowLeft, LogIn } from "lucide-react";
+import { ArrowLeft, Camera, LogIn, X } from "lucide-react";
 
 const JoinGame = () => {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ const JoinGame = () => {
   const [code, setCode] = useState(urlCode?.toUpperCase() || "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selfie, setSelfie] = useState<string | null>(null);
+  const [selfieBusy, setSelfieBusy] = useState(false);
 
   const handleJoin = () => {
     const c = code.trim().toUpperCase();
@@ -22,7 +25,11 @@ const JoinGame = () => {
     const s = getSocket();
     s.emit(
       "player_join",
-      { roomCode: c, nickname: name.trim() || "Player" },
+      {
+        roomCode: c,
+        nickname: name.trim() || "Player",
+        ...(selfie ? { avatarDataUrl: selfie } : {}),
+      },
       (res: { error?: string; playerId?: string }) => {
         setBusy(false);
         if (res.error) {
@@ -38,6 +45,23 @@ const JoinGame = () => {
         }
       },
     );
+  };
+
+  const onPickSelfie = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    setSelfieBusy(true);
+    try {
+      const dataUrl = await compressSelfieFile(file);
+      if (!dataUrl) setError("Photo: could not use that image — try another or skip.");
+      else {
+        setError(null);
+        setSelfie(dataUrl);
+      }
+    } finally {
+      setSelfieBusy(false);
+    }
   };
 
   return (
@@ -71,6 +95,46 @@ const JoinGame = () => {
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-body font-medium text-foreground">Selfie (optional)</label>
+            <p className="text-xs text-muted-foreground font-body">
+              Shown on the host screen next to your name. Skipped if you prefer not to.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-body font-medium text-foreground hover:bg-muted transition-colors">
+                <Camera className="h-4 w-4" />
+                {selfieBusy ? "Processing…" : "Add photo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                  disabled={selfieBusy}
+                  onChange={onPickSelfie}
+                />
+              </label>
+              {selfie ? (
+                <button
+                  type="button"
+                  onClick={() => setSelfie(null)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-body text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            {selfie ? (
+              <div className="flex justify-center pt-1">
+                <img
+                  src={selfie}
+                  alt="Your preview"
+                  className="h-20 w-20 rounded-full object-cover ring-2 ring-primary/30"
+                />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-body font-medium text-foreground">Game Code</label>
             <input
               type="text"
@@ -89,7 +153,7 @@ const JoinGame = () => {
             size="xl"
             className="w-full"
             onClick={handleJoin}
-            disabled={!name.trim() || code.trim().length < 4 || busy}
+            disabled={!name.trim() || code.trim().length < 4 || busy || selfieBusy}
           >
             Join Game
           </Button>

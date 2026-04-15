@@ -18,7 +18,9 @@ const defaultSettings: GameSettings = {
   difficulties: [],
   category: "",
   correctPoints: 10,
+  correctMidRevealPoints: 10,
   negPoints: 5,
+  answerCountdownSeconds: 5,
 };
 
 function splitWords(text: string): string[] {
@@ -46,6 +48,7 @@ export class Room {
   tossupQueue: TossupDTO[] = [];
   currentTossupIndex = -1;
   private revealTimer: ReturnType<typeof setInterval> | null = null;
+  private answerTimer: ReturnType<typeof setTimeout> | null = null;
   readonly revealMsPerWord = 400;
 
   private current: {
@@ -58,6 +61,7 @@ export class Room {
     buzzWinnerId: string | null;
     /** If set, only these player ids may buzz (team mode neg) */
     buzzEligibleIds: string[] | null;
+    answerDeadlineMs: number | null;
   } | null = null;
 
   teamScoreA = 0;
@@ -90,7 +94,11 @@ export class Room {
     return secret === this.hostSecret;
   }
 
-  addPlayer(nickname: string, socketId: string): Player {
+  addPlayer(
+    nickname: string,
+    socketId: string,
+    avatarDataUrl?: string | null,
+  ): Player {
     const id = genPlayerId();
     const p: Player = {
       id,
@@ -101,6 +109,7 @@ export class Room {
       buzzCount: 0,
       correctCount: 0,
       wrongCount: 0,
+      avatarDataUrl: avatarDataUrl ?? null,
     };
     this.players.set(id, p);
     this.push();
@@ -174,11 +183,25 @@ export class Room {
   }
 
   updateSettings(partial: Partial<GameSettings>): void {
-    this.settings = {
+    const merged: GameSettings = {
       ...this.settings,
       ...partial,
       difficulties: partial.difficulties ?? this.settings.difficulties,
     };
+    if (
+      partial.correctMidRevealPoints === undefined &&
+      partial.correctPoints !== undefined
+    ) {
+      merged.correctMidRevealPoints = merged.correctPoints;
+    }
+    const clampInt = (n: number, lo: number, hi: number) =>
+      Math.max(lo, Math.min(hi, Math.round(Number(n)) || 0));
+    merged.correctPoints = clampInt(merged.correctPoints, 0, 500);
+    merged.correctMidRevealPoints = clampInt(merged.correctMidRevealPoints, 0, 500);
+    merged.negPoints = clampInt(merged.negPoints, 0, 500);
+    merged.answerCountdownSeconds = clampInt(merged.answerCountdownSeconds, 0, 120);
+    merged.questionCount = clampInt(merged.questionCount, 1, 50);
+    this.settings = merged;
     this.push();
   }
 
@@ -206,6 +229,7 @@ export class Room {
 
   restartToLobby(): void {
     this.clearRevealTimer();
+    this.clearAnswerTimer();
     this.current = null;
     this.phase = "lobby";
     this.tossupQueue = [];
@@ -233,6 +257,14 @@ export class Room {
     }
   }
 
+  private clearAnswerTimer(): void {
+    if (this.answerTimer) {
+      clearTimeout(this.answerTimer);
+      this.answerTimer = null;
+    }
+    if (this.current) this.current.answerDeadlineMs = null;
+  }
+
   private startRevealTicker(): void {
     this.clearRevealTimer();
     this.revealTimer = setInterval(() => {
@@ -255,6 +287,7 @@ export class Room {
 
   advanceToNextTossup(): void {
     this.clearRevealTimer();
+    this.clearAnswerTimer();
     this.current = null;
     this.currentTossupIndex += 1;
     if (this.currentTossupIndex >= this.tossupQueue.length) {
@@ -273,6 +306,7 @@ export class Room {
       buzzPhase: "open",
       buzzWinnerId: null,
       buzzEligibleIds: null,
+      answerDeadlineMs: null,
     };
     if (!this.current.revealComplete) this.startRevealTicker();
     this.push();
@@ -343,11 +377,23 @@ export class Room {
       return { ok: false, reason: "buzz_closed" };
     const eligible = this.eligibleBuzzPlayerIds();
     if (!eligible.includes(playerId)) return { ok: false, reason: "not_eligible" };
+    this.clearAnswerTimer();
     this.current.buzzPhase = "locked";
     this.current.buzzWinnerId = playerId;
     const player = this.players.get(playerId);
     if (player) player.buzzCount += 1;
     this.clearRevealTimer();
+    const sec = this.settings.answerCountdownSeconds;
+    if (sec > 0) {
+      const deadline = Date.now() + sec * 1000;
+      this.current.answerDeadlineMs = deadline;
+      this.answerTimer = setTimeout(() => {
+        this.answerTimer = null;
+        if (this.current?.buzzPhase === "locked") this.markIncorrect();
+      }, sec * 1000);
+    } else {
+      this.current.answerDeadlineMs = null;
+    }
     this.push();
     return { ok: true };
   }
@@ -360,7 +406,10 @@ export class Room {
   markCorrect(): void {
     const winner = this.getBuzzWinner();
     if (!winner || !this.current) return;
-    const pts = this.settings.correctPoints;
+    this.clearAnswerTimer();
+    const pts = this.current.revealComplete
+      ? this.settings.correctPoints
+      : this.settings.correctMidRevealPoints;
     winner.correctCount += 1;
     if (this.gameMode === "ffa") {
       winner.score += pts;
@@ -374,6 +423,7 @@ export class Room {
   markIncorrect(): void {
     const winner = this.getBuzzWinner();
     if (!winner || !this.current) return;
+    this.clearAnswerTimer();
     const neg = this.settings.negPoints;
     const midReveal = !this.current.revealComplete;
     winner.wrongCount += 1;
@@ -429,6 +479,7 @@ export class Room {
     this.lastRoundAnswer = this.getAnswerLine();
     this.readerBetweenPlayerId = this.getReaderPlayerId();
     this.clearRevealTimer();
+    this.clearAnswerTimer();
     if (this.gameMode === "team") {
       if (this.teamOrderA.length)
         this.activeIndexA =
@@ -465,6 +516,7 @@ export class Room {
       buzzPhase: c.buzzPhase,
       buzzWinnerId: c.buzzWinnerId,
       buzzWinnerName: w,
+      answerDeadlineMs: c.answerDeadlineMs,
     };
   }
 
@@ -481,6 +533,7 @@ export class Room {
       buzzCount: p.buzzCount,
       correctCount: p.correctCount,
       wrongCount: p.wrongCount,
+      ...(p.avatarDataUrl ? { avatarDataUrl: p.avatarDataUrl } : {}),
     }));
     const activeA = this.teamOrderA[this.activeIndexA] ?? null;
     const activeB = this.teamOrderB[this.activeIndexB] ?? null;
