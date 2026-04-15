@@ -6,7 +6,12 @@ import PlayerList from "@/components/PlayerList";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
-import { hostKey, playerKey, readHostSetup } from "@/lib/roomStorage";
+import {
+  hostKey,
+  playerKey,
+  readHostSetup,
+  socketSettingsFromHostSetup,
+} from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { Play, ArrowLeft, Shuffle, X } from "lucide-react";
 import { toast } from "sonner";
@@ -41,13 +46,7 @@ const Lobby = () => {
         s.emit("update_settings", {
           roomCode: code,
           hostSecret,
-          settings: {
-            questionCount: st.questionCount,
-            category: st.category.trim(),
-            difficulties: difficultyNumbers(st.difficulty),
-            correctPoints: 10,
-            negPoints: 5,
-          },
+          settings: socketSettingsFromHostSetup(st, difficultyNumbers(st.difficulty)),
         });
       }
     } else if (playerId) {
@@ -89,13 +88,7 @@ const Lobby = () => {
       {
         roomCode: code,
         hostSecret,
-        settings: {
-          questionCount: setup.questionCount,
-          category: setup.category.trim(),
-          difficulties: difficultyNumbers(setup.difficulty),
-          correctPoints: 10,
-          negPoints: 5,
-        },
+        settings: socketSettingsFromHostSetup(setup, difficultyNumbers(setup.difficulty)),
       },
       (res: { error?: string; message?: string }) => {
         if (res?.error === "no_tossups")

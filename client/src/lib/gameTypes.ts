@@ -10,6 +10,8 @@ export interface Player {
   team?: number;
   score: number;
   avatar: string;
+  /** Join selfie (data URL); when set, UI shows photo instead of emoji */
+  selfieDataUrl?: string | null;
   stats: {
     buzzed: number;
     correct: number;
@@ -41,6 +43,7 @@ export function mapServerPlayers(
     name: p.nickname,
     score: p.score,
     avatar: AVATARS[i % AVATARS.length],
+    selfieDataUrl: p.avatarDataUrl ?? null,
     stats: {
       buzzed: p.buzzCount,
       correct: p.correctCount,

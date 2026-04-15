@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { GameMode } from "@/lib/gameTypes";
 import { CATEGORIES, difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
-import { hostKey, setupKey, type HostSetupPayload } from "@/lib/roomStorage";
-import { ArrowLeft, Crown, Users, Swords } from "lucide-react";
+import {
+  DEFAULT_HOST_ADVANCED,
+  hostKey,
+  setupKey,
+  type HostSetupPayload,
+  socketSettingsFromHostSetup,
+} from "@/lib/roomStorage";
+import { ArrowLeft, ChevronDown, Crown, Users, Swords } from "lucide-react";
 
 const HostGame = () => {
   const navigate = useNavigate();
@@ -16,6 +27,18 @@ const HostGame = () => {
   const [category, setCategory] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
   const [creating, setCreating] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const [correctMidRevealPoints, setCorrectMidRevealPoints] = useState(
+    DEFAULT_HOST_ADVANCED.correctMidRevealPoints,
+  );
+  const [correctFullRevealPoints, setCorrectFullRevealPoints] = useState(
+    DEFAULT_HOST_ADVANCED.correctFullRevealPoints,
+  );
+  const [negPoints, setNegPoints] = useState(DEFAULT_HOST_ADVANCED.negPoints);
+  const [answerCountdownSeconds, setAnswerCountdownSeconds] = useState(
+    DEFAULT_HOST_ADVANCED.answerCountdownSeconds,
+  );
 
   const handleCreate = () => {
     setCreating(true);
@@ -29,9 +52,14 @@ const HostGame = () => {
         category,
         questionCount,
         hostName: name.trim() || "Host",
+        correctMidRevealPoints,
+        correctFullRevealPoints,
+        negPoints,
+        answerCountdownSeconds,
       };
       sessionStorage.setItem(setupKey(code), JSON.stringify(setup));
 
+      const diffs = difficultyNumbers(difficulty);
       s.emit("set_game_mode", {
         roomCode: code,
         hostSecret: msg.hostSecret,
@@ -40,13 +68,7 @@ const HostGame = () => {
       s.emit("update_settings", {
         roomCode: code,
         hostSecret: msg.hostSecret,
-        settings: {
-          questionCount,
-          category: category.trim(),
-          difficulties: difficultyNumbers(difficulty),
-          correctPoints: 10,
-          negPoints: 5,
-        },
+        settings: socketSettingsFromHostSetup(setup, diffs),
       });
 
       setCreating(false);
@@ -150,6 +172,80 @@ const HostGame = () => {
               className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             />
           </div>
+
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3 text-left text-sm font-body font-medium text-foreground hover:bg-muted/60 transition-colors">
+              Advanced settings
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <label className="text-sm font-body font-medium text-foreground">
+                  Points (interrupt — mid question)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={correctMidRevealPoints}
+                  onChange={(e) => setCorrectMidRevealPoints(Number(e.target.value) || 0)}
+                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <p className="text-xs text-muted-foreground font-body">
+                  Awarded when the reader marks a buzz correct before the full tossup is revealed.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-body font-medium text-foreground">
+                  Points (after full question)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={correctFullRevealPoints}
+                  onChange={(e) => setCorrectFullRevealPoints(Number(e.target.value) || 0)}
+                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-body font-medium text-foreground">
+                  Negative points (wrong on interrupt)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={negPoints}
+                  onChange={(e) => setNegPoints(Number(e.target.value) || 0)}
+                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <p className="text-xs text-muted-foreground font-body">
+                  Subtracted when wrong before the full question is shown (same rules as before for
+                  team vs FFA).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-body font-medium text-foreground">
+                  Answer countdown (seconds)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={answerCountdownSeconds}
+                  onChange={(e) => setAnswerCountdownSeconds(Number(e.target.value) || 0)}
+                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <p className="text-xs text-muted-foreground font-body">
+                  After a buzz, time before an automatic incorrect (0 = off). Reader can still judge
+                  sooner.
+                </p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           <Button
             variant="hero"

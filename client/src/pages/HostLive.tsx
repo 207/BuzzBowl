@@ -4,6 +4,7 @@ import { useServerGameState } from "@/hooks/useServerGameState";
 import { getSocket } from "@/lib/socket";
 import { hostKey } from "@/lib/roomStorage";
 import { toast } from "sonner";
+import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { GameOverScreen } from "@/components/GameOverScreen";
 import PlayerList from "@/components/PlayerList";
 import { mapServerPlayers } from "@/lib/gameTypes";
@@ -125,6 +126,9 @@ const HostLive = () => {
             <p className="mt-3 text-sm text-muted-foreground font-body">
               Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName}</span>
             </p>
+            {(t.answerDeadlineMs ?? null) != null && (
+              <AnswerCountdown answerDeadlineMs={t.answerDeadlineMs} />
+            )}
           </div>
         )}
 

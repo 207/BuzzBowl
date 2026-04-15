@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { Home, RotateCcw, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Player } from "@/lib/gameTypes";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import type { ServerGameMode } from "@/types/serverGame";
 
 export type GameOverVariant = "player" | "host";
@@ -140,7 +141,9 @@ export function GameOverScreen({
                     }`}
                     title={`🐝 ${p.stats.buzzed} · Correct: ${p.stats.correct} · Wrong: ${p.stats.wrong}`}
                   >
-                    <div className="text-2xl">{p.avatar}</div>
+                    <div className="flex justify-center">
+                      <PlayerAvatar player={p} size="podium" />
+                    </div>
                     <div className="mt-1 text-xs text-muted-foreground">#{place}</div>
                     <div className="text-sm font-body font-semibold truncate max-w-full">{p.name}</div>
                     <div className="text-lg font-heading font-bold text-primary">{p.score}</div>
@@ -160,7 +163,7 @@ export function GameOverScreen({
                     title={`🐝 ${p.stats.buzzed} · Correct: ${p.stats.correct} · Wrong: ${p.stats.wrong}`}
                   >
                     <span className="text-sm font-heading font-bold text-muted-foreground w-8">#{i + 4}</span>
-                    <span className="text-xl">{p.avatar}</span>
+                    <PlayerAvatar player={p} size="row" />
                     <span className="flex-1 text-left font-body font-medium">{p.name}</span>
                     <span className="font-heading font-bold text-primary">{p.score}</span>
                     <div className="absolute -top-10 right-2 hidden group-hover:flex whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground shadow-lg">
