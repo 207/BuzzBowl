@@ -153,3 +153,4 @@ After each finished tossup (per your rotation rules), increment (with wrap):
 - Model **per-tossup (or per-round) state** on the server: `revealComplete`, buzz eligibility + who buzzed (`buzzWinnerPlayerId` or equivalent), and **team rep indices** in team mode.
 - Implement **host token** so the host display can refresh without killing the room. (**Player rejoin tokens** — skip for v1.)
 - Align client copy: no QR until v1.1.
+

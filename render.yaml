@@ -1,0 +1,20 @@
+# Render Blueprint — Phase 1 single-host deploy (Node serves API + Socket.io + static client).
+# https://render.com/docs/blueprint-spec
+#
+# After first deploy, open the service URL; CORS defaults from RENDER_EXTERNAL_URL if CLIENT_ORIGIN is unset.
+# Custom domain: set CLIENT_ORIGIN in the dashboard to your https://... canonical origin.
+
+services:
+  - type: web
+    name: buzzbowl
+    runtime: node
+    # Use `starter` if `free` is unavailable in your account/region.
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: SERVE_CLIENT=1 npm run start -w server
+    healthCheckPath: /health
+    envVars:
+      - key: SERVE_CLIENT
+        value: "1"
+      - key: NODE_VERSION
+        value: "22.14.0"

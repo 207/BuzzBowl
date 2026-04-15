@@ -188,6 +188,24 @@ export function registerSocketHandlers(io: Server): void {
     );
 
     socket.on(
+      "kick_player",
+      (msg: { roomCode: string; hostSecret: string; playerId: string }) => {
+        const room = verifiedHostRoom(msg);
+        if (!room) return;
+        room.removePlayer(msg.playerId);
+      },
+    );
+
+    socket.on(
+      "randomize_teams",
+      (msg: { roomCode: string; hostSecret: string }) => {
+        const room = verifiedHostRoom(msg);
+        if (!room) return;
+        room.randomizeTeams();
+      },
+    );
+
+    socket.on(
       "update_settings",
       (msg: {
         roomCode: string;
@@ -293,6 +311,15 @@ export function registerSocketHandlers(io: Server): void {
       "continue_game",
       (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
         runIfHostOrBetweenReader(msg, (room) => room.continueAfterBetween());
+      },
+    );
+
+    socket.on(
+      "restart_game",
+      (msg: { roomCode: string; hostSecret: string }) => {
+        const room = verifiedHostRoom(msg);
+        if (!room) return;
+        room.restartToLobby();
       },
     );
 

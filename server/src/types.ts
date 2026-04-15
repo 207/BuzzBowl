@@ -9,6 +9,9 @@ export interface Player {
   team: "A" | "B" | null;
   /** FFA: used. Team mode: display only; team scores on room */
   score: number;
+  buzzCount: number;
+  correctCount: number;
+  wrongCount: number;
 }
 
 export interface TossupDTO {

@@ -98,6 +98,9 @@ export class Room {
       socketId,
       team: null,
       score: 0,
+      buzzCount: 0,
+      correctCount: 0,
+      wrongCount: 0,
     };
     this.players.set(id, p);
     this.push();
@@ -126,6 +129,15 @@ export class Room {
     this.push();
   }
 
+  removePlayer(playerId: string): boolean {
+    if (this.phase !== "lobby") return false;
+    const removed = this.players.delete(playerId);
+    if (!removed) return false;
+    this.rebuildTeamOrders();
+    this.push();
+    return true;
+  }
+
   private rebuildTeamOrders(): void {
     this.teamOrderA = [...this.players.values()]
       .filter((p) => p.team === "A")
@@ -142,6 +154,22 @@ export class Room {
       this.teamOrderA = [];
       this.teamOrderB = [];
     }
+    this.push();
+  }
+
+  randomizeTeams(): void {
+    if (this.phase !== "lobby") return;
+    const shuffled = [...this.players.values()];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i];
+      shuffled[i] = shuffled[j]!;
+      shuffled[j] = tmp!;
+    }
+    shuffled.forEach((p, i) => {
+      p.team = i % 2 === 0 ? "A" : "B";
+    });
+    this.rebuildTeamOrders();
     this.push();
   }
 
@@ -173,6 +201,28 @@ export class Room {
     this.ffaTurnOrder = [...this.players.keys()];
     this.readerBetweenPlayerId = null;
     this.advanceToNextTossup();
+    this.push();
+  }
+
+  restartToLobby(): void {
+    this.clearRevealTimer();
+    this.current = null;
+    this.phase = "lobby";
+    this.tossupQueue = [];
+    this.currentTossupIndex = -1;
+    this.teamScoreA = 0;
+    this.teamScoreB = 0;
+    this.activeIndexA = 0;
+    this.activeIndexB = 0;
+    this.lastRoundAnswer = null;
+    this.readerBetweenPlayerId = null;
+    this.ffaTurnOrder = [...this.players.keys()];
+    for (const p of this.players.values()) {
+      p.score = 0;
+      p.buzzCount = 0;
+      p.correctCount = 0;
+      p.wrongCount = 0;
+    }
     this.push();
   }
 
@@ -253,11 +303,22 @@ export class Room {
       if (this.ffaTurnOrder.length === 0) return null;
       return this.ffaTurnOrder[this.currentTossupIndex % this.ffaTurnOrder.length] ?? null;
     }
+    const activeA = this.teamOrderA[this.activeIndexA] ?? null;
+    const activeB = this.teamOrderB[this.activeIndexB] ?? null;
     const sideA = this.currentTossupIndex % 2 === 0;
-    const order = sideA ? this.teamOrderA : this.teamOrderB;
-    if (order.length === 0) return null;
-    const idx = Math.floor(this.currentTossupIndex / 2) % order.length;
-    return order[idx] ?? null;
+    const primaryOrder = sideA ? this.teamOrderA : this.teamOrderB;
+    const secondaryOrder = sideA ? this.teamOrderB : this.teamOrderA;
+    const roundIndex = Math.floor(this.currentTossupIndex / 2);
+    const pickBench = (order: string[]): string | null => {
+      if (order.length === 0) return null;
+      const start = roundIndex % order.length;
+      for (let k = 0; k < order.length; k += 1) {
+        const cand = order[(start + k) % order.length]!;
+        if (cand !== activeA && cand !== activeB) return cand;
+      }
+      return null;
+    };
+    return pickBench(primaryOrder) ?? pickBench(secondaryOrder);
   }
 
   eligibleBuzzPlayerIds(): string[] {
@@ -284,6 +345,8 @@ export class Room {
     if (!eligible.includes(playerId)) return { ok: false, reason: "not_eligible" };
     this.current.buzzPhase = "locked";
     this.current.buzzWinnerId = playerId;
+    const player = this.players.get(playerId);
+    if (player) player.buzzCount += 1;
     this.clearRevealTimer();
     this.push();
     return { ok: true };
@@ -298,6 +361,7 @@ export class Room {
     const winner = this.getBuzzWinner();
     if (!winner || !this.current) return;
     const pts = this.settings.correctPoints;
+    winner.correctCount += 1;
     if (this.gameMode === "ffa") {
       winner.score += pts;
     } else {
@@ -312,6 +376,7 @@ export class Room {
     if (!winner || !this.current) return;
     const neg = this.settings.negPoints;
     const midReveal = !this.current.revealComplete;
+    winner.wrongCount += 1;
 
     if (this.gameMode === "ffa") {
       if (midReveal) winner.score -= neg;
@@ -413,6 +478,9 @@ export class Room {
       nickname: p.nickname,
       team: p.team,
       score: p.score,
+      buzzCount: p.buzzCount,
+      correctCount: p.correctCount,
+      wrongCount: p.wrongCount,
     }));
     const activeA = this.teamOrderA[this.activeIndexA] ?? null;
     const activeB = this.teamOrderB[this.activeIndexB] ?? null;
