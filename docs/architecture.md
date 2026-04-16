@@ -1,6 +1,6 @@
 # BuzzBowl — architecture (current)
 
-High-level view of what exists **today** in the repo. **Answer privacy (v1):** per-tossup `readerPlayerId`, reader-only answer on the wire during play, full answer on the break screen for everyone. Still planned: Jeopardy source, optional TV-only route — see [BACKLOG.md](./BACKLOG.md).
+High-level view of what exists **today** in the repo. **Answer privacy (v1):** per-tossup `readerPlayerId`, reader-only answer on the wire during play, full answer on the break screen for everyone. **Play presentation modes:** `house` (host/TV screen in play) and `remote` (phones-only play route). Still planned: Jeopardy source, optional TV-only route hardening — see [BACKLOG.md](./BACKLOG.md).
 
 ---
 
@@ -35,6 +35,8 @@ flowchart TB
   R -.->|start_game| QB
 ```
 
+
+
 ---
 
 ## Monorepo layout
@@ -67,6 +69,8 @@ flowchart LR
   HAND --> REG
 ```
 
+
+
 ---
 
 ## Client routes (logical)
@@ -79,24 +83,42 @@ flowchart LR
   HL["/host/game/:code"]
   J["/join"]
   PG["/play/:code"]
+  PM["playMode from settings"]
 
   I --> HG
   I --> J
   HG --> L
   J --> L
-  L --> HL
+  L --> PM
+  PM -->|"house"| HL
+  PM -->|"remote"| PG
   L --> PG
 ```
+
+
 
 ---
 
 ## Socket.io — main server events (summary)
 
-| Direction | Events (examples) |
-|-----------|-------------------|
-| Client → server | `create_room`, `host_join`, `player_join`, `player_identify`, `set_game_mode`, `set_player_team`, `update_settings`, `start_game`, `pause_reveal`, `resume_reveal`, `show_full_question`, `buzz`, `mark_correct`, `mark_incorrect`, `skip_question`, `continue_game` |
-| Host vs reader on controls | For `pause_reveal`, `resume_reveal`, `show_full_question`, `mark_*`, `skip_question`: body may include **`hostSecret`** (lobby host) or **`playerId`** (must be the current tossup reader in `playing`). For `continue_game` in `between`: **`hostSecret`** or **`playerId`** matching `betweenControlsPlayerId`. |
-| Server → room | `game_state` (room snapshot; **answer line** omitted for non-readers during `playing`; reader matches `socket.data.playerId === readerPlayerId`) |
+
+| Direction                  | Events (examples)                                                                                                                                                                                                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Client → server            | `create_room`, `host_join`, `player_join`, `player_identify`, `set_game_mode`, `set_player_team`, `update_settings`, `start_game`, `pause_reveal`, `resume_reveal`, `show_full_question`, `buzz`, `mark_correct`, `mark_incorrect`, `skip_question`, `vote_ffa_skip`, `continue_game`                             |
+| Host vs reader on controls | For `pause_reveal`, `resume_reveal`, `show_full_question`, `mark_*`, `skip_question`: body may include `**hostSecret**` (lobby host) or `**playerId**` (must be the current tossup reader in `playing`). For `continue_game` in `between`: `**hostSecret**` or `**playerId**` matching `betweenControlsPlayerId`. |
+| Server → room              | `game_state` (room snapshot; **answer line** omitted for non-readers during `playing`; reader matches `socket.data.playerId === readerPlayerId`)                                                                                                                                                                  |
+
+
+---
+
+## Play-mode behavior (current)
+
+
+| Setting                        | Behavior                                                                                                                          |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `settings.playMode = "house"`  | Host device routes to `/host/game/:code`; non-reader phones hide tossup text and buzz from phone while reading from host display. |
+| `settings.playMode = "remote"` | Host must join as player in lobby, then routes to `/play/:code` after start; no host TV route during play.                        |
+
 
 ---
 
@@ -112,6 +134,8 @@ stateDiagram-v2
   ended --> [*]
 ```
 
+
+
 ---
 
 ## Planned / partial
@@ -121,7 +145,7 @@ Documented in [BACKLOG.md](./BACKLOG.md):
 - **Jeopardy-style** question option (e.g. JService) alongside QB Reader.
 - **Answer privacy — remaining:** judging from reader phone, dedicated cast-only display if the host machine is mirrored.
 
-**Implemented:** rotating reader per tossup (`readerPlayerId`), reader excluded from buzz, per-socket `game_state` for the printed answer during play, `lastRoundAnswer` on the `between` screen for all clients, reader-only socket controls for reveal / judge / skip / next tossup (`betweenControlsPlayerId` on break), HostLive display-first.
+**Implemented:** rotating reader per tossup (`readerPlayerId`), reader excluded from buzz, per-socket `game_state` for the printed answer during play, `lastRoundAnswer` on the `between` screen for all clients, reader-only socket controls for reveal / judge / skip / next tossup (`betweenControlsPlayerId` on break), and dual play presentation modes (`house` vs `remote`) with host-as-player in remote lobbies.
 
 ---
 
@@ -130,3 +154,4 @@ Documented in [BACKLOG.md](./BACKLOG.md):
 - [BACKLOG.md](./BACKLOG.md) — deferred tasks and design notes
 - [BuzzBowl-Product-Design-v0.2.md](./BuzzBowl-Product-Design-v0.2.md) — product spec
 - [v1-decisions.md](./v1-decisions.md) — implementation defaults
+

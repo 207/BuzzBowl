@@ -315,10 +315,33 @@ export function registerSocketHandlers(io: Server): void {
 
     socket.on(
       "continue_game",
-      (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
-        runIfHostOrBetweenReader(msg, (room) => room.continueAfterBetween());
+      async (msg: { roomCode: string; hostSecret?: string; playerId?: string }) => {
+        const room = getRoom(msg.roomCode);
+        if (!room || !isHostOrBetweenReader(room, msg)) return;
+        if (room.phase !== "between") return;
+        let replacement: Awaited<ReturnType<typeof fetchRandomTossups>>[0] | null =
+          null;
+        if (room.isSkipNoProgressContinuePending()) {
+          try {
+            const arr = await fetchRandomTossups({
+              number: 1,
+              difficulties: room.settings.difficulties,
+              category: room.settings.category,
+            });
+            replacement = arr[0] ?? null;
+          } catch (e) {
+            console.error("continue_game replacement tossup", e);
+          }
+        }
+        room.continueAfterBetween(replacement);
       },
     );
+
+    socket.on("vote_ffa_skip", (msg: { roomCode: string; playerId: string }) => {
+      const room = getRoom(msg.roomCode);
+      if (!room) return;
+      room.voteFfaSkip(msg.playerId);
+    });
 
     socket.on(
       "restart_game",

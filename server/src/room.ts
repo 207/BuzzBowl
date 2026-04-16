@@ -21,7 +21,7 @@ const defaultSettings: GameSettings = {
   correctPoints: 10,
   correctMidRevealPoints: 10,
   negPoints: 5,
-  answerCountdownSeconds: 5,
+  answerCountdownSeconds: 10,
 };
 
 function splitWords(text: string): string[] {
@@ -63,7 +63,15 @@ export class Room {
     /** If set, only these player ids may buzz (team mode neg) */
     buzzEligibleIds: string[] | null;
     answerDeadlineMs: number | null;
+    /** FFA: unanimous vote-skip tracking */
+    ffaSkipVotes: Set<string> | null;
   } | null = null;
+
+  /**
+   * When true, the next `continueAfterBetween` replaces the current queue slot with a new tossup
+   * instead of advancing the index (skipped tossups do not count toward the game length).
+   */
+  private skipNoProgressTossupPending = false;
 
   teamScoreA = 0;
   teamScoreB = 0;
@@ -209,6 +217,7 @@ export class Room {
 
   startGame(tossups: TossupDTO[]): void {
     if (tossups.length === 0) throw new Error("No tossups");
+    this.skipNoProgressTossupPending = false;
     if (this.gameMode === "team") {
       this.rebuildTeamOrders();
       if (this.teamOrderA.length === 0 || this.teamOrderB.length === 0) {
@@ -232,6 +241,7 @@ export class Room {
   restartToLobby(): void {
     this.clearRevealTimer();
     this.clearAnswerTimer();
+    this.skipNoProgressTossupPending = false;
     this.current = null;
     this.phase = "lobby";
     this.tossupQueue = [];
@@ -287,17 +297,16 @@ export class Room {
     this.push();
   }
 
-  advanceToNextTossup(): void {
+  private loadTossupAtIndex(idx: number): void {
     this.clearRevealTimer();
     this.clearAnswerTimer();
     this.current = null;
-    this.currentTossupIndex += 1;
-    if (this.currentTossupIndex >= this.tossupQueue.length) {
+    if (idx < 0 || idx >= this.tossupQueue.length) {
       this.phase = "ended";
       this.push();
       return;
     }
-    const dto = this.tossupQueue[this.currentTossupIndex]!;
+    const dto = this.tossupQueue[idx]!;
     const words = splitWords(dto.question_sanitized);
     this.current = {
       dto,
@@ -309,9 +318,21 @@ export class Room {
       buzzWinnerId: null,
       buzzEligibleIds: null,
       answerDeadlineMs: null,
+      ffaSkipVotes: this.gameMode === "ffa" ? new Set() : null,
     };
     if (!this.current.revealComplete) this.startRevealTicker();
     this.push();
+  }
+
+  /** Advance index and load next tossup (counts toward game length). */
+  advanceToNextTossup(): void {
+    this.currentTossupIndex += 1;
+    this.loadTossupAtIndex(this.currentTossupIndex);
+  }
+
+  /** Reload tossup at the current index (used after a no-progress skip). */
+  private loadTossupAtCurrentIndex(): void {
+    this.loadTossupAtIndex(this.currentTossupIndex);
   }
 
   pauseReveal(): void {
@@ -380,6 +401,7 @@ export class Room {
     const eligible = this.eligibleBuzzPlayerIds();
     if (!eligible.includes(playerId)) return { ok: false, reason: "not_eligible" };
     this.clearAnswerTimer();
+    if (this.current.ffaSkipVotes) this.current.ffaSkipVotes.clear();
     this.current.buzzPhase = "locked";
     this.current.buzzWinnerId = playerId;
     const player = this.players.get(playerId);
@@ -408,6 +430,7 @@ export class Room {
   markCorrect(): void {
     const winner = this.getBuzzWinner();
     if (!winner || !this.current) return;
+    this.skipNoProgressTossupPending = false;
     this.clearAnswerTimer();
     const pts = this.current.revealComplete
       ? this.settings.correctPoints
@@ -432,6 +455,7 @@ export class Room {
 
     if (this.gameMode === "ffa") {
       if (midReveal) winner.score -= neg;
+      if (this.current.ffaSkipVotes) this.current.ffaSkipVotes.clear();
       this.current.buzzPhase = "open";
       this.current.buzzWinnerId = null;
       this.current.buzzEligibleIds = null;
@@ -469,12 +493,31 @@ export class Room {
   }
 
   skipQuestion(): void {
+    this.skipNoProgressTossupPending = true;
     this.finishTossupRound();
   }
 
   /** Host ends tossup without full resolve (e.g. after incorrect and wants next) */
   nextQuestionHost(): void {
+    this.skipNoProgressTossupPending = true;
     this.finishTossupRound();
+  }
+
+  /** FFA only: player vote to skip; skips when every player has voted. */
+  voteFfaSkip(playerId: string): { ok: boolean; reason?: string } {
+    if (this.gameMode !== "ffa" || this.phase !== "playing" || !this.current)
+      return { ok: false, reason: "not_applicable" };
+    if (!this.players.has(playerId)) return { ok: false, reason: "not_player" };
+    const votes = this.current.ffaSkipVotes;
+    if (!votes) return { ok: false, reason: "not_applicable" };
+    votes.add(playerId);
+    if (votes.size >= this.players.size) {
+      this.skipNoProgressTossupPending = true;
+      this.finishTossupRound();
+      return { ok: true };
+    }
+    this.push();
+    return { ok: true };
   }
 
   private finishTossupRound(): void {
@@ -495,11 +538,28 @@ export class Room {
     this.push();
   }
 
-  continueAfterBetween(): void {
+  /**
+   * After break: either advance to the next counted tossup, or replace the current slot
+   * when the previous tossup was skipped (does not advance `currentTossupIndex`).
+   * @param replacementTossup from QB Reader when `skipNoProgressTossupPending` was set
+   */
+  /** True while on break after a skip that should not advance the tossup counter. */
+  isSkipNoProgressContinuePending(): boolean {
+    return this.phase === "between" && this.skipNoProgressTossupPending;
+  }
+
+  continueAfterBetween(replacementTossup: TossupDTO | null): void {
     if (this.phase !== "between") return;
+    const skipNp = this.skipNoProgressTossupPending;
+    this.skipNoProgressTossupPending = false;
     this.lastRoundAnswer = null;
     this.readerBetweenPlayerId = null;
     this.phase = "playing";
+    if (skipNp && replacementTossup) {
+      this.tossupQueue[this.currentTossupIndex] = replacementTossup;
+      this.loadTossupAtCurrentIndex();
+      return;
+    }
     this.advanceToNextTossup();
   }
 
@@ -552,6 +612,13 @@ export class Room {
       answer = this.getAnswerLine();
     }
 
+    const ffaSkipVotes =
+      this.phase === "playing" && this.gameMode === "ffa" && this.current?.ffaSkipVotes
+        ? [...this.current.ffaSkipVotes]
+        : [];
+    const ffaSkipVotesNeeded =
+      this.phase === "playing" && this.gameMode === "ffa" ? this.players.size : 0;
+
     return {
       code: this.code,
       phase: this.phase,
@@ -571,6 +638,8 @@ export class Room {
       activePlayerIdA: activeA,
       activePlayerIdB: activeB,
       eligibleBuzzIds: this.eligibleBuzzPlayerIds(),
+      ffaSkipVotes,
+      ffaSkipVotesNeeded,
     };
   }
 }

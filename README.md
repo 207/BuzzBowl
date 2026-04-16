@@ -1,6 +1,10 @@
 # BuzzBowl
 
-Quiz bowl–style party game: **host** on a big screen, **players** buzz in from their phones. Real-time layer is **Socket.io**; tossups come from the **[QB Reader](https://www.qbreader.org/)** API.
+Quiz bowl–style party game with two play modes:
+- **House party:** host on a big screen, players buzz from phones.
+- **Remote play:** phones-only gameplay (host joins as a player after creating the room).
+
+Real-time layer is **Socket.io**; tossups come from the **[QB Reader](https://www.qbreader.org/)** API.
 
 The **web UI** lives under `client/` and is based on the `quiz-party-main` design (Vite + React + Tailwind + shadcn/ui), wired to this repo’s game server.
 
@@ -78,10 +82,11 @@ With `SERVE_CLIENT=1` and correct `CLIENT_ORIGIN` / platform URL. The host must 
 ## v1 scope (implemented)
 
 - Create room / join with code + nickname (no QR, no PDF questions).
+- Host-selectable **play mode**: `house` (host display during play) or `remote` (no host display during play; host joins as player in lobby).
 - **Free for all** and **head-to-head team** mode with per-tossup active players.
 - Server-timed word reveal; host pause / resume / show full; correct / incorrect / skip.
 - Tossup prefetch from QB Reader using host-selected difficulty preset and optional category.
 
-**Routes:** `/` home · `/host` create room · `/lobby/:code` lobby · `/host/game/:code` host play screen · `/join` / `/join/:code` join · `/play/:code` player buzzer.
+**Routes:** `/` home · `/host` create room · `/lobby/:code` lobby · `/host/game/:code` host display route (house mode) · `/join` / `/join/:code` join · `/play/:code` player phone route (all players in remote mode).
 
 Host recovery after a browser refresh: reopen `/lobby/:code` on the same device (host secret is in `sessionStorage` under `buzzbowl_`* keys).

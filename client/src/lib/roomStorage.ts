@@ -14,7 +14,7 @@ export const DEFAULT_HOST_ADVANCED = {
   correctMidRevealPoints: 10,
   correctFullRevealPoints: 10,
   negPoints: 5,
-  answerCountdownSeconds: 5,
+  answerCountdownSeconds: 10,
 } as const;
 
 export interface HostSetupPayload {

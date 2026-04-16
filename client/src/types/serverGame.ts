@@ -56,4 +56,8 @@ export interface ServerGameState {
   activePlayerIdA: string | null;
   activePlayerIdB: string | null;
   eligibleBuzzIds: string[];
+  /** FFA during play: player ids who voted to skip this tossup */
+  ffaSkipVotes: string[];
+  /** FFA during play: votes needed for unanimous skip (= player count) */
+  ffaSkipVotesNeeded: number;
 }

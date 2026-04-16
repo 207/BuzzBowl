@@ -5,7 +5,7 @@ import { useServerGameState } from "@/hooks/useServerGameState";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { GameOverScreen } from "@/components/GameOverScreen";
 import { emitReaderControl, getSocket, type ReaderControlEvent } from "@/lib/socket";
-import { playerKey } from "@/lib/roomStorage";
+import { hostKey, playerKey } from "@/lib/roomStorage";
 import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
@@ -15,6 +15,10 @@ const PlayGame = () => {
   const code = (paramCode ?? "").toUpperCase();
   const [playerId, setPlayerId] = useState<string | null>(() =>
     code ? sessionStorage.getItem(playerKey(code)) : null,
+  );
+  const hostSecret = useMemo(
+    () => (code ? sessionStorage.getItem(hostKey(code)) : null),
+    [code],
   );
   const state = useServerGameState(code);
 
@@ -79,6 +83,20 @@ const PlayGame = () => {
 
   if (state.phase === "ended") {
     const uiPlayers = mapServerPlayers(state.players, state.gameMode);
+    if (hostSecret) {
+      return (
+        <GameOverScreen
+          variant="host"
+          gameMode={state.gameMode}
+          teamNames={state.teamNames}
+          teamScoreA={state.teamScoreA}
+          teamScoreB={state.teamScoreB}
+          uiPlayers={uiPlayers}
+          onRestart={() => getSocket().emit("restart_game", { roomCode: code, hostSecret })}
+          onHome={() => navigate("/")}
+        />
+      );
+    }
     return (
       <GameOverScreen
         variant="player"
@@ -94,6 +112,7 @@ const PlayGame = () => {
 
   if (state.phase === "between") {
     const canAdvance = state.betweenControlsPlayerId === playerId;
+    const isLastBreak = state.currentTossupIndex + 1 >= state.totalTossups;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-xl font-heading text-foreground">Round break</p>
@@ -114,7 +133,7 @@ const PlayGame = () => {
         {canAdvance ? (
           <Button variant="hero" size="xl" className="w-full max-w-sm" onClick={() => emitAsReader("continue_game")}>
             <FastForward className="w-5 h-5" />
-            Next tossup
+            {isLastBreak ? "See Results" : "Next tossup"}
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground font-body max-w-xs">
@@ -128,12 +147,17 @@ const PlayGame = () => {
   if (state.phase === "playing" && state.tossup) {
     const t = state.tossup;
     const imReader = state.readerPlayerId === playerId;
+    const isRemoteMode = state.settings.playMode === "remote";
     const isHouseMode = state.settings.playMode === "house";
     const showQuestionCard = !isHouseMode || imReader;
     const eligible = state.eligibleBuzzIds?.includes(playerId) ?? false;
     const canBuzz = t.buzzPhase === "open" && eligible;
     const iBuzzed = t.buzzPhase === "locked" && t.buzzWinnerId === playerId;
     const watching = state.gameMode === "team" && !eligible && !iBuzzed && !imReader;
+
+    const skipVotes = state.ffaSkipVotes ?? [];
+    const skipNeeded = state.ffaSkipVotesNeeded ?? 0;
+    const hasSkipVote = playerId ? skipVotes.includes(playerId) : false;
 
     const revealToggleDisabled = t.revealComplete;
     const revealToggleLabel = t.revealComplete ? "Reveal done" : t.revealPaused ? "Resume" : "Pause";
@@ -196,6 +220,28 @@ const PlayGame = () => {
           </div>
         ) : null}
 
+        {state.gameMode === "ffa" && (
+          <div className="mx-4 mt-3 flex flex-col items-center gap-2">
+            <p className="text-center text-xs text-muted-foreground font-body">
+              Vote to skip: {skipVotes.length} / {skipNeeded || "—"}
+              {skipNeeded > 0 && skipVotes.length >= skipNeeded ? " — skipping…" : ""}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="max-w-xs"
+              disabled={!playerId || hasSkipVote || skipNeeded === 0}
+              onClick={() => {
+                if (!code || !playerId) return;
+                getSocket().emit("vote_ffa_skip", { roomCode: code, playerId });
+              }}
+            >
+              {hasSkipVote ? "Skip vote recorded" : "Vote to skip tossup"}
+            </Button>
+          </div>
+        )}
+
         {imReader && (
           <div className="mx-4 mt-3 flex flex-col gap-3">
             <div className="flex flex-wrap gap-2 justify-center">
@@ -246,6 +292,11 @@ const PlayGame = () => {
               </div>
             )}
           </div>
+        )}
+        {isRemoteMode && t.buzzPhase === "locked" && (
+          <p className="mx-4 mt-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-center text-sm text-muted-foreground font-body">
+            Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName ?? "Player"}</span>
+          </p>
         )}
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-8 pt-4">

@@ -67,6 +67,10 @@ const RulesHelpButton = () => (
               answer. The first valid buzz locks the tossup for that player.
             </li>
             <li>
+              In <span className="text-foreground">free for all</span>, everyone can vote to skip; when all players have
+              voted, the tossup is skipped (the reader can still skip immediately).
+            </li>
+            <li>
               The reader marks <span className="text-foreground">Correct</span> or <span className="text-foreground">Incorrect</span>
               . Wrong answers on an interrupt can cost points (depending on host settings).
             </li>
