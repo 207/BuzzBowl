@@ -87,6 +87,7 @@ const PlayGame = () => {
       return (
         <GameOverScreen
           variant="host"
+          celebrate={state.settings.playMode === "remote"}
           gameMode={state.gameMode}
           teamNames={state.teamNames}
           teamScoreA={state.teamScoreA}
@@ -100,6 +101,7 @@ const PlayGame = () => {
     return (
       <GameOverScreen
         variant="player"
+        celebrate={state.settings.playMode === "remote"}
         gameMode={state.gameMode}
         teamNames={state.teamNames}
         teamScoreA={state.teamScoreA}

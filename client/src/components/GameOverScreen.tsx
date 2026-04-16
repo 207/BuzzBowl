@@ -10,6 +10,8 @@ export type GameOverVariant = "player" | "host";
 
 export interface GameOverScreenProps {
   variant: GameOverVariant;
+  /** If true, show celebratory confetti/fireworks even on player variant. */
+  celebrate?: boolean;
   gameMode: ServerGameMode;
   teamNames: { A: string; B: string };
   teamScoreA: number;
@@ -21,6 +23,7 @@ export interface GameOverScreenProps {
 
 export function GameOverScreen({
   variant,
+  celebrate = false,
   gameMode,
   teamNames,
   teamScoreA,
@@ -34,9 +37,10 @@ export function GameOverScreen({
   const podium = sorted.slice(0, 3);
   const remaining = sorted.slice(3);
   const isHost = variant === "host";
+  const showCelebration = isHost || celebrate;
 
   useEffect(() => {
-    if (!isHost) return;
+    if (!showCelebration) return;
 
     const burst = () => {
       confetti({
@@ -56,11 +60,11 @@ export function GameOverScreen({
     burst();
     const timeout = setTimeout(burst, 700);
     return () => clearTimeout(timeout);
-  }, [isHost]);
+  }, [showCelebration]);
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-12 overflow-hidden">
-      {isHost && (
+      {showCelebration && (
         <>
           <div className="pointer-events-none absolute inset-0 opacity-25">
             <div className="absolute left-[8%] top-[10%] text-4xl animate-float">🎆</div>
@@ -133,6 +137,13 @@ export function GameOverScreen({
                 const place = idx + 1;
                 const h =
                   place === 1 ? "h-36" : place === 2 ? "h-28" : "h-24";
+                const avatarSize = place === 1 ? "podium" : "row";
+                const rankClass = place === 1 ? "text-xs" : "text-[10px]";
+                const nameClass =
+                  place === 1
+                    ? "text-sm truncate max-w-full"
+                    : "text-[10px] leading-tight line-clamp-2 text-center min-h-[2.2em]";
+                const scoreClass = place === 1 ? "text-lg" : "text-sm";
                 return (
                   <div
                     key={p.id}
@@ -142,11 +153,13 @@ export function GameOverScreen({
                     title={`🐝 ${p.stats.buzzed} · Correct: ${p.stats.correct} · Wrong: ${p.stats.wrong}`}
                   >
                     <div className="flex justify-center">
-                      <PlayerAvatar player={p} size="podium" />
+                      <PlayerAvatar player={p} size={avatarSize} />
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">#{place}</div>
-                    <div className="text-sm font-body font-semibold truncate max-w-full">{p.name}</div>
-                    <div className="text-lg font-heading font-bold text-primary">{p.score}</div>
+                    <div className={`mt-1 text-muted-foreground ${rankClass}`}>#{place}</div>
+                    <div className={`font-body font-semibold max-w-full ${nameClass}`}>
+                      {p.name}
+                    </div>
+                    <div className={`${scoreClass} font-heading font-bold text-primary`}>{p.score}</div>
                     <div className="absolute -top-10 hidden group-hover:flex whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground shadow-lg">
                       🐝 {p.stats.buzzed} · ✅ {p.stats.correct} · ❌ {p.stats.wrong}
                     </div>

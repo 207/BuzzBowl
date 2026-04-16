@@ -21,7 +21,6 @@ import { ArrowLeft, ChevronDown, Crown, Users, Swords } from "lucide-react";
 const HostGame = () => {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
   const [mode, setMode] = useState<GameMode>("ffa");
   const [playMode, setPlayMode] = useState<"house" | "remote">("house");
   const [difficulty, setDifficulty] = useState("easy");
@@ -53,7 +52,7 @@ const HostGame = () => {
         difficulty,
         category,
         questionCount,
-        hostName: name.trim() || "Host",
+        hostName: "Host",
         correctMidRevealPoints,
         correctFullRevealPoints,
         negPoints,
@@ -97,18 +96,6 @@ const HostGame = () => {
         </div>
 
         <div className="game-card p-6 space-y-5">
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Your Name (optional)</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Host"
-              maxLength={20}
-              className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            />
-          </div>
-
           <div className="space-y-2">
             <label className="text-sm font-body font-medium text-foreground">Game Mode</label>
             <div className="grid grid-cols-2 gap-3">
