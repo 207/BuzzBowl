@@ -22,10 +22,14 @@ export interface TossupDTO {
   answer_sanitized: string;
 }
 
+export type QuestionSource = "qbreader" | "opentdb";
+
 export interface GameSettings {
   questionCount: number;
   /** Presentation mode: house uses host display, remote is phones-only */
   playMode: "house" | "remote";
+  /** Quizbowl (QB Reader) vs general multiple-choice trivia (OpenTDB; no T/F, choices hidden). */
+  questionSource: QuestionSource;
   /** QB Reader difficulty integers 0–10; empty = any */
   difficulties: number[];
   /** Comma-separated or single category; empty = any */

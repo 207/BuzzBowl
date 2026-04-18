@@ -7,6 +7,7 @@ import { GameOverScreen } from "@/components/GameOverScreen";
 import { emitReaderControl, getSocket, type ReaderControlEvent } from "@/lib/socket";
 import { hostKey, playerKey } from "@/lib/roomStorage";
 import { AnswerCountdown } from "@/components/AnswerCountdown";
+import { NextRoundCountdown } from "@/components/NextRoundCountdown";
 import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
@@ -112,6 +113,14 @@ const PlayGame = () => {
     );
   }
 
+  if (state.phase === "countdown") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-6">
+        <NextRoundCountdown countdownDeadlineMs={state.countdownDeadlineMs ?? null} />
+      </div>
+    );
+  }
+
   if (state.phase === "between") {
     const canAdvance = state.betweenControlsPlayerId === playerId;
     const isLastBreak = state.currentTossupIndex + 1 >= state.totalTossups;
@@ -135,11 +144,11 @@ const PlayGame = () => {
         {canAdvance ? (
           <Button variant="hero" size="xl" className="w-full max-w-sm" onClick={() => emitAsReader("continue_game")}>
             <FastForward className="w-5 h-5" />
-            {isLastBreak ? "See Results" : "Next tossup"}
+            {isLastBreak ? "See Results" : "Next question"}
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground font-body max-w-xs">
-            Waiting for the reader to start the next tossup…
+            Waiting for the judge to start the next question…
           </p>
         )}
       </div>
@@ -148,14 +157,14 @@ const PlayGame = () => {
 
   if (state.phase === "playing" && state.tossup) {
     const t = state.tossup;
-    const imReader = state.readerPlayerId === playerId;
+    const imJudge = state.readerPlayerId === playerId;
     const isRemoteMode = state.settings.playMode === "remote";
     const isHouseMode = state.settings.playMode === "house";
-    const showQuestionCard = !isHouseMode || imReader;
+    const showQuestionCard = !isHouseMode || imJudge;
     const eligible = state.eligibleBuzzIds?.includes(playerId) ?? false;
     const canBuzz = t.buzzPhase === "open" && eligible;
     const iBuzzed = t.buzzPhase === "locked" && t.buzzWinnerId === playerId;
-    const watching = state.gameMode === "team" && !eligible && !iBuzzed && !imReader;
+    const watching = state.gameMode === "team" && !eligible && !iBuzzed && !imJudge;
 
     const skipVotes = state.ffaSkipVotes ?? [];
     const skipNeeded = state.ffaSkipVotesNeeded ?? 0;
@@ -175,9 +184,9 @@ const PlayGame = () => {
             <span className="text-primary font-semibold">Your score: {me?.score ?? 0}</span>
           )}
         </div>
-        {imReader && (
+        {imJudge && (
           <p className="bg-primary/15 px-4 py-2 text-center text-sm font-body text-primary font-medium">
-            You&apos;re reading — run controls below (buzzer off)
+            You&apos;re the judge — run controls below (buzzer off)
           </p>
         )}
         {watching && (
@@ -189,7 +198,7 @@ const PlayGame = () => {
         <div className="flex flex-shrink-0 flex-col gap-2 px-4 pt-3">
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground font-body">
             <span>
-              Tossup {state.currentTossupIndex + 1} / {state.totalTossups}
+              Question {state.currentTossupIndex + 1} / {state.totalTossups}
             </span>
             {state.gameMode === "team" && (
               <span>
@@ -215,7 +224,7 @@ const PlayGame = () => {
           )}
         </div>
 
-        {imReader && state.answer ? (
+        {imJudge && state.answer ? (
           <div className="mx-4 mt-4 game-card border-primary/30 p-5">
             <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Answer line</p>
             <p className="mt-2 text-lg font-heading text-accent leading-snug">{state.answer}</p>
@@ -228,23 +237,25 @@ const PlayGame = () => {
               Vote to skip: {skipVotes.length} / {skipNeeded || "—"}
               {skipNeeded > 0 && skipVotes.length >= skipNeeded ? " — skipping…" : ""}
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="max-w-xs"
-              disabled={!playerId || hasSkipVote || skipNeeded === 0}
-              onClick={() => {
-                if (!code || !playerId) return;
-                getSocket().emit("vote_ffa_skip", { roomCode: code, playerId });
-              }}
-            >
-              {hasSkipVote ? "Skip vote recorded" : "Vote to skip tossup"}
-            </Button>
+            {!imJudge && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="max-w-xs"
+                disabled={!playerId || hasSkipVote || skipNeeded === 0}
+                onClick={() => {
+                  if (!code || !playerId) return;
+                  getSocket().emit("vote_ffa_skip", { roomCode: code, playerId });
+                }}
+              >
+                {hasSkipVote ? "Skip vote recorded" : "Vote to skip question"}
+              </Button>
+            )}
           </div>
         )}
 
-        {imReader && (
+        {imJudge && (
           <div className="mx-4 mt-3 flex flex-col gap-3">
             <div className="flex flex-wrap gap-2 justify-center">
               <Button
@@ -303,7 +314,7 @@ const PlayGame = () => {
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-8 pt-4">
           {t.buzzPhase === "locked" &&
-            !imReader &&
+            !imJudge &&
             !iBuzzed &&
             (t.answerDeadlineMs ?? null) != null && (
               <AnswerCountdown

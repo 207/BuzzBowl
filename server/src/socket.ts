@@ -1,14 +1,14 @@
 import type { Server, Socket } from "socket.io";
-import { fetchRandomTossups } from "./qbreader.js";
+import { fetchTossupPoolForRoom } from "./questionFetch.js";
 import {
   attachRoomNotifier,
   createRoom,
   getRoom,
 } from "./registry.js";
 import type { Room } from "./room.js";
-import type { GameMode, GameSettings } from "./types.js";
+import type { GameMode, GameSettings, TossupDTO } from "./types.js";
 
-/** Per-socket payload so the printed answer is only sent to the designated reader. */
+/** Per-socket payload so the printed answer is only sent to the designated judge (reader). */
 async function emitGameStateToRoom(io: Server, room: Room): Promise<void> {
   const sockets = await io.in(room.code).fetchSockets();
   for (const sock of sockets) {
@@ -243,13 +243,8 @@ export function registerSocketHandlers(io: Server): void {
           return;
         }
         if (msg.settings) room.updateSettings(msg.settings);
-        const n = Math.max(room.settings.questionCount, 8);
         try {
-          const tossups = await fetchRandomTossups({
-            number: n,
-            difficulties: room.settings.difficulties,
-            category: room.settings.category,
-          });
+          const tossups = await fetchTossupPoolForRoom(room.settings);
           if (tossups.length === 0) {
             ack?.({ error: "no_tossups" });
             return;
@@ -319,15 +314,10 @@ export function registerSocketHandlers(io: Server): void {
         const room = getRoom(msg.roomCode);
         if (!room || !isHostOrBetweenReader(room, msg)) return;
         if (room.phase !== "between") return;
-        let replacement: Awaited<ReturnType<typeof fetchRandomTossups>>[0] | null =
-          null;
+        let replacement: TossupDTO | null = null;
         if (room.isSkipNoProgressContinuePending()) {
           try {
-            const arr = await fetchRandomTossups({
-              number: 1,
-              difficulties: room.settings.difficulties,
-              category: room.settings.category,
-            });
+            const arr = await fetchTossupPoolForRoom(room.settings, 1);
             replacement = arr[0] ?? null;
           } catch (e) {
             console.error("continue_game replacement tossup", e);

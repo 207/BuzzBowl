@@ -31,8 +31,8 @@ const RulesHelpButton = () => (
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Choose a play mode</h3>
           <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
             <li>
-              <span className="text-foreground">House party</span>: question text is on the host screen; non-readers buzz
-              from their phones.
+              <span className="text-foreground">House party</span>: question text is on the host screen; the judge does not
+              buzz — other players buzz from their phones when they&apos;re in play.
             </li>
             <li>
               <span className="text-foreground">Remote play</span>: no TV screen during gameplay; everyone (including the
@@ -55,36 +55,36 @@ const RulesHelpButton = () => (
           </ul>
         </section>
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">During a tossup</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">During a question</h3>
           <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
             <li>
               Questions <span className="text-foreground">reveal a few words at a time</span>. The{" "}
-              <span className="text-foreground">reader</span> (shown on screen) controls pause, show full question, skip,
-              and judges after a buzz.
+              <span className="text-foreground">judge</span> (shown on screen) controls pause, show full question, skip,
+              and scores after a buzz.
             </li>
             <li>
               If you&apos;re allowed to buzz, tap <span className="text-foreground">Buzz</span> as soon as you know the
-              answer. The first valid buzz locks the tossup for that player.
+              answer. The first valid buzz locks the question for that player.
             </li>
             <li>
-              In <span className="text-foreground">free for all</span>, everyone can vote to skip; when all players have
-              voted, the tossup is skipped (the reader can still skip immediately).
+              In <span className="text-foreground">free for all</span>, players who are not the judge can vote to skip;
+              when all of them have voted, the question is skipped (the judge can still skip immediately).
             </li>
             <li>
-              The reader marks <span className="text-foreground">Correct</span> or <span className="text-foreground">Incorrect</span>
+              The judge marks <span className="text-foreground">Correct</span> or <span className="text-foreground">Incorrect</span>
               . Wrong answers on an interrupt can cost points (depending on host settings).
             </li>
             <li>
               The host may turn on an <span className="text-foreground">answer countdown</span> after a buzz; when it hits
-              zero, the buzz counts as incorrect if the reader hasn&apos;t judged yet.
+              zero, the buzz counts as incorrect if the judge hasn&apos;t scored it yet.
             </li>
           </ul>
         </section>
         <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Between &amp; end</h3>
           <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
-            <li>After each tossup there&apos;s a short break. The reader taps to go to the next question.</li>
-            <li>When all tossups are done, scores and a podium appear on the host display.</li>
+            <li>After each question there&apos;s a short break. The judge taps to go to the next question (after a short get-ready countdown).</li>
+            <li>When all questions are done, scores and a podium appear on the host display.</li>
           </ul>
         </section>
         <p className="text-xs text-muted-foreground border-t border-border pt-3">

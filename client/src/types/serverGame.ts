@@ -1,6 +1,6 @@
 export type ServerGameMode = "ffa" | "team";
 
-export type ServerPhase = "lobby" | "playing" | "between" | "ended";
+export type ServerPhase = "lobby" | "playing" | "between" | "countdown" | "ended";
 
 export interface ServerPlayer {
   id: string;
@@ -13,9 +13,12 @@ export interface ServerPlayer {
   avatarDataUrl?: string;
 }
 
+export type ServerQuestionSource = "qbreader" | "opentdb";
+
 export interface ServerGameSettings {
   questionCount: number;
   playMode: "house" | "remote";
+  questionSource: ServerQuestionSource;
   difficulties: number[];
   category: string;
   correctPoints: number;
@@ -47,17 +50,19 @@ export interface ServerGameState {
   currentTossupIndex: number;
   totalTossups: number;
   tossup: ServerTossup | null;
-  /** Printed answer: on break, everyone sees previous tossup; during play, only the reader socket gets this. */
+  /** Printed answer: on break, everyone sees the previous answer; during play, only the judge socket gets this. */
   answer: string | null;
-  /** Designated reader for this tossup; cannot buzz; sees `answer` on their phone during play. */
+  /** Designated judge (reader) for this question; cannot buzz; sees `answer` on their phone during play. */
   readerPlayerId: string | null;
-  /** On break: this player may emit `continue_game` (same person who read the tossup). */
+  /** On break: this player may emit `continue_game` (same person who read the question). */
   betweenControlsPlayerId: string | null;
   activePlayerIdA: string | null;
   activePlayerIdB: string | null;
   eligibleBuzzIds: string[];
-  /** FFA during play: player ids who voted to skip this tossup */
+  /** FFA during play: player ids who voted to skip this question */
   ffaSkipVotes: string[];
-  /** FFA during play: votes needed for unanimous skip (= player count) */
+  /** FFA during play: votes needed for unanimous skip (non-judge players only) */
   ffaSkipVotesNeeded: number;
+  /** Server wall-clock deadline for the pre-round countdown (phase `countdown` only). */
+  countdownDeadlineMs: number | null;
 }

@@ -112,9 +112,9 @@ const Lobby = () => {
       },
       (res: { error?: string; message?: string }) => {
         if (res?.error === "no_tossups")
-          setStartError("No tossups for those filters — widen category or difficulty.");
+          setStartError("No questions for those filters — widen category or difficulty.");
         else if (res?.error === "fetch_failed")
-          setStartError(res.message ?? "Could not reach QB Reader.");
+          setStartError(res.message ?? "Could not load questions.");
         else if (res?.error) setStartError("Could not start.");
       },
     );

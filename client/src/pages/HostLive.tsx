@@ -5,6 +5,7 @@ import { getSocket } from "@/lib/socket";
 import { hostKey, playerKey } from "@/lib/roomStorage";
 import { toast } from "sonner";
 import { AnswerCountdown } from "@/components/AnswerCountdown";
+import { NextRoundCountdown } from "@/components/NextRoundCountdown";
 import { GameOverScreen } from "@/components/GameOverScreen";
 import PlayerList from "@/components/PlayerList";
 import { mapServerPlayers } from "@/lib/gameTypes";
@@ -70,6 +71,24 @@ const HostLive = () => {
     );
   }
 
+  if (state.phase === "countdown") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-8">
+        <h2 className="text-2xl font-heading font-bold text-foreground">Get ready</h2>
+        <NextRoundCountdown countdownDeadlineMs={state.countdownDeadlineMs ?? null} />
+        <p className="max-w-md text-center text-sm text-muted-foreground font-body">
+          Judge:{" "}
+          <span className="text-foreground font-medium">
+            {state.readerPlayerId
+              ? state.players.find((p) => p.id === state.readerPlayerId)?.nickname ?? "—"
+              : "—"}
+          </span>
+        </p>
+        <PlayerList players={uiPlayers} mode={uiMode} />
+      </div>
+    );
+  }
+
   if (state.phase === "between") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-8">
@@ -82,7 +101,7 @@ const HostLive = () => {
         ) : null}
         <PlayerList players={uiPlayers} mode={uiMode} />
         <p className="max-w-md text-center text-sm text-muted-foreground font-body">
-          <span className="text-foreground font-medium">Reader</span> advances the game from their phone (next tossup).
+          <span className="text-foreground font-medium">Judge</span> advances the game from their phone (next question).
         </p>
       </div>
     );
@@ -94,10 +113,10 @@ const HostLive = () => {
       <div className="min-h-screen flex flex-col px-4 py-8 max-w-4xl mx-auto w-full gap-6">
         <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground font-body">
           <span>
-            Tossup {state.currentTossupIndex + 1} / {state.totalTossups}
+            Question {state.currentTossupIndex + 1} / {state.totalTossups}
           </span>
           <span>
-            Reader:{" "}
+            Judge:{" "}
             <span className="text-foreground font-medium">
               {state.readerPlayerId
                 ? state.players.find((p) => p.id === state.readerPlayerId)?.nickname ?? "—"
@@ -125,8 +144,8 @@ const HostLive = () => {
         {t.buzzPhase === "locked" && (
           <div className="game-card p-5 border-border/60">
             <p className="text-sm text-muted-foreground font-body">
-              Printed answer is on the <span className="text-foreground font-semibold">reader&apos;s phone</span> until
-              this tossup ends (shown here on the break screen).
+              Printed answer is on the <span className="text-foreground font-semibold">judge&apos;s phone</span> until
+              this question ends (shown here on the break screen).
             </p>
             <p className="mt-3 text-sm text-muted-foreground font-body">
               Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName}</span>
@@ -138,7 +157,7 @@ const HostLive = () => {
         )}
 
         <p className="text-center text-sm text-muted-foreground font-body max-w-xl mx-auto">
-          Pause, reveal, judge, and skip are on the <span className="text-foreground font-medium">reader&apos;s phone</span>{" "}
+          Pause, reveal, scoring, and skip are on the <span className="text-foreground font-medium">judge&apos;s phone</span>{" "}
           so this screen can stay up without someone at the laptop.
         </p>
 

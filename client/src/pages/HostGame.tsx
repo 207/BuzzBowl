@@ -23,6 +23,7 @@ const HostGame = () => {
 
   const [mode, setMode] = useState<GameMode>("ffa");
   const [playMode, setPlayMode] = useState<"house" | "remote">("house");
+  const [questionSource, setQuestionSource] = useState<"qbreader" | "opentdb">("qbreader");
   const [difficulty, setDifficulty] = useState("easy");
   const [category, setCategory] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
@@ -49,6 +50,7 @@ const HostGame = () => {
       const setup: HostSetupPayload = {
         mode,
         playMode,
+        questionSource,
         difficulty,
         category,
         questionCount,
@@ -127,7 +129,7 @@ const HostGame = () => {
                 }`}
               >
                 <p className="font-body text-sm font-semibold">House party</p>
-                <p className="mt-1 text-xs">Question on host screen; reader controls from phone.</p>
+                <p className="mt-1 text-xs">Question on host screen; judge controls from phone.</p>
               </button>
               <button
                 type="button"
@@ -140,6 +142,40 @@ const HostGame = () => {
               >
                 <p className="font-body text-sm font-semibold">Remote play</p>
                 <p className="mt-1 text-xs">No TV route during game; everyone plays on phone.</p>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-body font-medium text-foreground">Question style</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuestionSource("qbreader");
+                  setCategory("");
+                }}
+                className={`h-11 rounded-lg font-body text-sm font-semibold transition-all ${
+                  questionSource === "qbreader"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                }`}
+              >
+                Quizbowl
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuestionSource("opentdb");
+                  setCategory("");
+                }}
+                className={`h-11 rounded-lg font-body text-sm font-semibold transition-all ${
+                  questionSource === "opentdb"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                }`}
+              >
+                General trivia
               </button>
             </div>
           </div>
@@ -164,24 +200,26 @@ const HostGame = () => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            >
-              <option value="">All Categories</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+          {questionSource === "qbreader" ? (
+            <div className="space-y-2">
+              <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              >
+                <option value="">All categories</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Tossups in game</label>
+            <label className="text-sm font-body font-medium text-foreground">Questions in game</label>
             <input
               type="number"
               min={1}
@@ -213,7 +251,7 @@ const HostGame = () => {
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 <p className="text-xs text-muted-foreground font-body">
-                  Awarded when the reader marks a buzz correct before the full tossup is revealed.
+                  Awarded when the judge marks a buzz correct before the full question is revealed.
                 </p>
               </div>
               <div className="space-y-2">
@@ -259,7 +297,7 @@ const HostGame = () => {
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 <p className="text-xs text-muted-foreground font-body">
-                  After a buzz, time before an automatic incorrect (0 = off). Reader can still judge
+                  After a buzz, time before an automatic incorrect (0 = off). The judge can still score
                   sooner.
                 </p>
               </div>

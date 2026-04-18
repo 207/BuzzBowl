@@ -20,6 +20,8 @@ export const DEFAULT_HOST_ADVANCED = {
 export interface HostSetupPayload {
   mode: "ffa" | "teams";
   playMode: "house" | "remote";
+  /** Quizbowl (QB Reader) or general trivia (OpenTDB). */
+  questionSource: "qbreader" | "opentdb";
   difficulty: string;
   category: string;
   questionCount: number;
@@ -47,6 +49,7 @@ export function readHostSetup(code: string): HostSetupPayload | null {
     return {
       mode: o.mode === "teams" || o.mode === "ffa" ? o.mode : "ffa",
       playMode: o.playMode === "remote" ? "remote" : "house",
+      questionSource: o.questionSource === "opentdb" ? "opentdb" : "qbreader",
       difficulty: typeof o.difficulty === "string" ? o.difficulty : "easy",
       category: typeof o.category === "string" ? o.category : "",
       questionCount:
@@ -74,6 +77,7 @@ export function socketSettingsFromHostSetup(
   return {
     questionCount: setup.questionCount,
     playMode: setup.playMode,
+    questionSource: setup.questionSource === "opentdb" ? "opentdb" : "qbreader",
     category: setup.category.trim(),
     difficulties,
     correctPoints: setup.correctFullRevealPoints,

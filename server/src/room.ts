@@ -16,6 +16,7 @@ const genPlayerId = customAlphabet(roomCodeAlphabet, 10);
 const defaultSettings: GameSettings = {
   questionCount: 10,
   playMode: "house",
+  questionSource: "qbreader",
   difficulties: [],
   category: "",
   correctPoints: 10,
@@ -31,7 +32,7 @@ function splitWords(text: string): string[] {
     .filter(Boolean);
 }
 
-export type RoomPhase = "lobby" | "playing" | "between" | "ended";
+export type RoomPhase = "lobby" | "playing" | "between" | "countdown" | "ended";
 
 export class Room {
   readonly code: string;
@@ -51,6 +52,12 @@ export class Room {
   private revealTimer: ReturnType<typeof setInterval> | null = null;
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
   readonly revealMsPerWord = 400;
+
+  private roundCountdownTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Wall time when the pre-round countdown ends (phase `countdown` only). */
+  countdownDeadlineMs: number | null = null;
+  private countdownNextTossupIndex: number | null = null;
+  private afterCountdown: (() => void) | null = null;
 
   private current: {
     dto: TossupDTO;
@@ -73,6 +80,12 @@ export class Room {
    */
   private skipNoProgressTossupPending = false;
 
+  /**
+   * Extra judge-rotation steps from no-progress skips (same `currentTossupIndex`, new question).
+   * Added to the tossup index when picking the judge so the reader changes after a skip.
+   */
+  private judgeSlotBonus = 0;
+
   teamScoreA = 0;
   teamScoreB = 0;
 
@@ -80,7 +93,7 @@ export class Room {
   ffaTurnOrder: string[] = [];
   /** Set when a tossup round ends; shown to everyone on the break screen; cleared on continue. */
   lastRoundAnswer: string | null = null;
-  /** Reader who may tap “next tossup” on break; set with `lastRoundAnswer` before `current` is cleared. */
+  /** Judge who may tap “next question” on break; set with `lastRoundAnswer` before `current` is cleared. */
   readerBetweenPlayerId: string | null = null;
 
   /** Set by socket layer to push state after each change */
@@ -211,6 +224,10 @@ export class Room {
     merged.answerCountdownSeconds = clampInt(merged.answerCountdownSeconds, 0, 120);
     merged.questionCount = clampInt(merged.questionCount, 1, 50);
     merged.playMode = merged.playMode === "remote" ? "remote" : "house";
+    if (partial.questionSource !== undefined) {
+      merged.questionSource =
+        partial.questionSource === "opentdb" ? "opentdb" : "qbreader";
+    }
     this.settings = merged;
     this.push();
   }
@@ -226,7 +243,8 @@ export class Room {
     }
     this.tossupQueue = tossups.slice(0, this.settings.questionCount);
     this.currentTossupIndex = -1;
-    this.phase = "playing";
+    this.judgeSlotBonus = 0;
+    this.clearRoundCountdown();
     this.teamScoreA = 0;
     this.teamScoreB = 0;
     this.activeIndexA = 0;
@@ -234,14 +252,18 @@ export class Room {
     for (const p of this.players.values()) p.score = 0;
     this.ffaTurnOrder = [...this.players.keys()];
     this.readerBetweenPlayerId = null;
-    this.advanceToNextTossup();
-    this.push();
+    this.startRoundCountdown(0, () => {
+      this.phase = "playing";
+      this.advanceToNextTossup();
+    });
   }
 
   restartToLobby(): void {
+    this.clearRoundCountdown();
     this.clearRevealTimer();
     this.clearAnswerTimer();
     this.skipNoProgressTossupPending = false;
+    this.judgeSlotBonus = 0;
     this.current = null;
     this.phase = "lobby";
     this.tossupQueue = [];
@@ -275,6 +297,33 @@ export class Room {
       this.answerTimer = null;
     }
     if (this.current) this.current.answerDeadlineMs = null;
+  }
+
+  private clearRoundCountdown(): void {
+    if (this.roundCountdownTimer) {
+      clearTimeout(this.roundCountdownTimer);
+      this.roundCountdownTimer = null;
+    }
+    this.countdownDeadlineMs = null;
+    this.countdownNextTossupIndex = null;
+    this.afterCountdown = null;
+  }
+
+  private startRoundCountdown(nextTossupIndex: number, then: () => void): void {
+    this.clearRoundCountdown();
+    this.afterCountdown = then;
+    this.phase = "countdown";
+    this.countdownNextTossupIndex = nextTossupIndex;
+    this.countdownDeadlineMs = Date.now() + 3000;
+    this.push();
+    this.roundCountdownTimer = setTimeout(() => {
+      this.roundCountdownTimer = null;
+      this.countdownDeadlineMs = null;
+      const fn = this.afterCountdown;
+      this.afterCountdown = null;
+      this.countdownNextTossupIndex = null;
+      fn?.();
+    }, 3000);
   }
 
   private startRevealTicker(): void {
@@ -354,18 +403,18 @@ export class Room {
     this.push();
   }
 
-  getReaderPlayerId(): string | null {
-    if (!this.current || this.phase !== "playing") return null;
+  private getReaderPlayerIdForTossupIndex(tossupIndex: number): string | null {
+    const ti = tossupIndex + this.judgeSlotBonus;
     if (this.gameMode === "ffa") {
       if (this.ffaTurnOrder.length === 0) return null;
-      return this.ffaTurnOrder[this.currentTossupIndex % this.ffaTurnOrder.length] ?? null;
+      return this.ffaTurnOrder[ti % this.ffaTurnOrder.length] ?? null;
     }
     const activeA = this.teamOrderA[this.activeIndexA] ?? null;
     const activeB = this.teamOrderB[this.activeIndexB] ?? null;
-    const sideA = this.currentTossupIndex % 2 === 0;
+    const sideA = ti % 2 === 0;
     const primaryOrder = sideA ? this.teamOrderA : this.teamOrderB;
     const secondaryOrder = sideA ? this.teamOrderB : this.teamOrderA;
-    const roundIndex = Math.floor(this.currentTossupIndex / 2);
+    const roundIndex = Math.floor(ti / 2);
     const pickBench = (order: string[]): string | null => {
       if (order.length === 0) return null;
       const start = roundIndex % order.length;
@@ -376,6 +425,14 @@ export class Room {
       return null;
     };
     return pickBench(primaryOrder) ?? pickBench(secondaryOrder);
+  }
+
+  getReaderPlayerId(): string | null {
+    if (this.phase === "countdown" && this.countdownNextTossupIndex != null) {
+      return this.getReaderPlayerIdForTossupIndex(this.countdownNextTossupIndex);
+    }
+    if (!this.current || this.phase !== "playing") return null;
+    return this.getReaderPlayerIdForTossupIndex(this.currentTossupIndex);
   }
 
   eligibleBuzzPlayerIds(): string[] {
@@ -503,15 +560,26 @@ export class Room {
     this.finishTossupRound();
   }
 
-  /** FFA only: player vote to skip; skips when every player has voted. */
+  private ffaSkipVotesNeededCount(): number {
+    if (this.gameMode !== "ffa") return 0;
+    const rid = this.getReaderPlayerId();
+    if (!rid) return this.players.size;
+    return Math.max(0, this.players.size - 1);
+  }
+
+  /** FFA only: non-judge players vote to skip; skips when all eligible voters have voted. */
   voteFfaSkip(playerId: string): { ok: boolean; reason?: string } {
     if (this.gameMode !== "ffa" || this.phase !== "playing" || !this.current)
       return { ok: false, reason: "not_applicable" };
     if (!this.players.has(playerId)) return { ok: false, reason: "not_player" };
+    const readerId = this.getReaderPlayerId();
+    if (readerId && playerId === readerId)
+      return { ok: false, reason: "judge_cannot_vote" };
     const votes = this.current.ffaSkipVotes;
     if (!votes) return { ok: false, reason: "not_applicable" };
+    const needed = this.ffaSkipVotesNeededCount();
     votes.add(playerId);
-    if (votes.size >= this.players.size) {
+    if (needed > 0 && votes.size >= needed) {
       this.skipNoProgressTossupPending = true;
       this.finishTossupRound();
       return { ok: true };
@@ -554,13 +622,20 @@ export class Room {
     this.skipNoProgressTossupPending = false;
     this.lastRoundAnswer = null;
     this.readerBetweenPlayerId = null;
-    this.phase = "playing";
-    if (skipNp && replacementTossup) {
-      this.tossupQueue[this.currentTossupIndex] = replacementTossup;
-      this.loadTossupAtCurrentIndex();
-      return;
-    }
-    this.advanceToNextTossup();
+    const replaceInPlace = Boolean(skipNp && replacementTossup);
+    if (replaceInPlace) this.judgeSlotBonus += 1;
+    const nextTossupIndex = replaceInPlace
+      ? this.currentTossupIndex
+      : this.currentTossupIndex + 1;
+    this.startRoundCountdown(nextTossupIndex, () => {
+      this.phase = "playing";
+      if (skipNp && replacementTossup) {
+        this.tossupQueue[this.currentTossupIndex] = replacementTossup;
+        this.loadTossupAtCurrentIndex();
+        return;
+      }
+      this.advanceToNextTossup();
+    });
   }
 
   getPublicTossupState(): PublicTossupState | null {
@@ -617,7 +692,9 @@ export class Room {
         ? [...this.current.ffaSkipVotes]
         : [];
     const ffaSkipVotesNeeded =
-      this.phase === "playing" && this.gameMode === "ffa" ? this.players.size : 0;
+      this.phase === "playing" && this.gameMode === "ffa"
+        ? this.ffaSkipVotesNeededCount()
+        : 0;
 
     return {
       code: this.code,
@@ -640,6 +717,7 @@ export class Room {
       eligibleBuzzIds: this.eligibleBuzzPlayerIds(),
       ffaSkipVotes,
       ffaSkipVotesNeeded,
+      countdownDeadlineMs: this.phase === "countdown" ? this.countdownDeadlineMs : null,
     };
   }
 }
