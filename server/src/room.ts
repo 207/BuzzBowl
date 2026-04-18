@@ -224,10 +224,8 @@ export class Room {
     merged.answerCountdownSeconds = clampInt(merged.answerCountdownSeconds, 0, 120);
     merged.questionCount = clampInt(merged.questionCount, 1, 50);
     merged.playMode = merged.playMode === "remote" ? "remote" : "house";
-    if (partial.questionSource !== undefined) {
-      merged.questionSource =
-        partial.questionSource === "opentdb" ? "opentdb" : "qbreader";
-    }
+    // OpenTDB is implemented but not shipped in the host UI yet; always quizbowl for now.
+    merged.questionSource = "qbreader";
     this.settings = merged;
     this.push();
   }
@@ -627,6 +625,12 @@ export class Room {
     const nextTossupIndex = replaceInPlace
       ? this.currentTossupIndex
       : this.currentTossupIndex + 1;
+    const gameEndsAfterContinue =
+      !replaceInPlace && nextTossupIndex >= this.tossupQueue.length;
+    if (gameEndsAfterContinue) {
+      this.advanceToNextTossup();
+      return;
+    }
     this.startRoundCountdown(nextTossupIndex, () => {
       this.phase = "playing";
       if (skipNp && replacementTossup) {
@@ -647,6 +651,7 @@ export class Room {
       : null;
     return {
       tossupId: c.dto._id,
+      category: c.dto.category ?? null,
       revealedText,
       revealComplete: c.revealComplete,
       revealPaused: c.revealPaused,

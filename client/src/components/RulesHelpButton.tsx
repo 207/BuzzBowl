@@ -67,30 +67,11 @@ const RulesHelpButton = () => (
               answer. The first valid buzz locks the question for that player.
             </li>
             <li>
-              In <span className="text-foreground">free for all</span>, players who are not the judge can vote to skip;
-              when all of them have voted, the question is skipped (the judge can still skip immediately).
-            </li>
-            <li>
               The judge marks <span className="text-foreground">Correct</span> or <span className="text-foreground">Incorrect</span>
               . Wrong answers on an interrupt can cost points (depending on host settings).
             </li>
-            <li>
-              The host may turn on an <span className="text-foreground">answer countdown</span> after a buzz; when it hits
-              zero, the buzz counts as incorrect if the judge hasn&apos;t scored it yet.
-            </li>
           </ul>
         </section>
-        <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Between &amp; end</h3>
-          <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
-            <li>After each question there&apos;s a short break. The judge taps to go to the next question (after a short get-ready countdown).</li>
-            <li>When all questions are done, scores and a podium appear on the host display.</li>
-          </ul>
-        </section>
-        <p className="text-xs text-muted-foreground border-t border-border pt-3">
-          Scoring details (points for interrupts vs after the full question, negs, timer length) are set by the host
-          under Advanced settings when creating the room.
-        </p>
       </div>
     </DialogContent>
   </Dialog>

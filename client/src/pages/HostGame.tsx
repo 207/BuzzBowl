@@ -6,6 +6,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { GameMode } from "@/lib/gameTypes";
 import { CATEGORIES, difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
@@ -16,14 +22,13 @@ import {
   type HostSetupPayload,
   socketSettingsFromHostSetup,
 } from "@/lib/roomStorage";
-import { ArrowLeft, ChevronDown, Crown, Users, Swords } from "lucide-react";
+import { ArrowLeft, ChevronDown, CircleHelp, Crown, Users, Swords } from "lucide-react";
 
 const HostGame = () => {
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<GameMode>("ffa");
-  const [playMode, setPlayMode] = useState<"house" | "remote">("house");
-  const [questionSource, setQuestionSource] = useState<"qbreader" | "opentdb">("qbreader");
+  const [playMode, setPlayMode] = useState<"house" | "remote">("remote");
   const [difficulty, setDifficulty] = useState("easy");
   const [category, setCategory] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
@@ -50,7 +55,7 @@ const HostGame = () => {
       const setup: HostSetupPayload = {
         mode,
         playMode,
-        questionSource,
+        questionSource: "qbreader",
         difficulty,
         category,
         questionCount,
@@ -121,18 +126,6 @@ const HostGame = () => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setPlayMode("house")}
-                className={`rounded-xl border px-3 py-3 text-left transition-all ${
-                  playMode === "house"
-                    ? "border-primary/60 bg-primary/10 text-foreground"
-                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <p className="font-body text-sm font-semibold">House party</p>
-                <p className="mt-1 text-xs">Question on host screen; judge controls from phone.</p>
-              </button>
-              <button
-                type="button"
                 onClick={() => setPlayMode("remote")}
                 className={`rounded-xl border px-3 py-3 text-left transition-all ${
                   playMode === "remote"
@@ -143,39 +136,17 @@ const HostGame = () => {
                 <p className="font-body text-sm font-semibold">Remote play</p>
                 <p className="mt-1 text-xs">No TV route during game; everyone plays on phone.</p>
               </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Question style</label>
-            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setQuestionSource("qbreader");
-                  setCategory("");
-                }}
-                className={`h-11 rounded-lg font-body text-sm font-semibold transition-all ${
-                  questionSource === "qbreader"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                onClick={() => setPlayMode("house")}
+                className={`rounded-xl border px-3 py-3 text-left transition-all ${
+                  playMode === "house"
+                    ? "border-primary/60 bg-primary/10 text-foreground"
+                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Quizbowl
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuestionSource("opentdb");
-                  setCategory("");
-                }}
-                className={`h-11 rounded-lg font-body text-sm font-semibold transition-all ${
-                  questionSource === "opentdb"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                }`}
-              >
-                General trivia
+                <p className="font-body text-sm font-semibold">House party</p>
+                <p className="mt-1 text-xs">Question on host screen; judge controls from phone.</p>
               </button>
             </div>
           </div>
@@ -200,23 +171,21 @@ const HostGame = () => {
             </div>
           </div>
 
-          {questionSource === "qbreader" ? (
-            <div className="space-y-2">
-              <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-              >
-                <option value="">All categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
+          <div className="space-y-2">
+            <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            >
+              <option value="">All categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-body font-medium text-foreground">Questions in game</label>
@@ -239,9 +208,12 @@ const HostGame = () => {
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
               <div className="space-y-2">
-                <label className="text-sm font-body font-medium text-foreground">
-                  Points (interrupt — mid question)
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-body font-medium text-foreground">
+                    Points (interrupt — mid question)
+                  </label>
+                  <FieldTooltip text="Awarded when the judge marks a buzz correct before the full question is revealed." />
+                </div>
                 <input
                   type="number"
                   min={0}
@@ -250,9 +222,6 @@ const HostGame = () => {
                   onChange={(e) => setCorrectMidRevealPoints(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <p className="text-xs text-muted-foreground font-body">
-                  Awarded when the judge marks a buzz correct before the full question is revealed.
-                </p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-body font-medium text-foreground">
@@ -268,9 +237,12 @@ const HostGame = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-body font-medium text-foreground">
-                  Negative points (wrong on interrupt)
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-body font-medium text-foreground">
+                    Negative points (wrong on interrupt)
+                  </label>
+                  <FieldTooltip text="Subtracted when wrong before the full question is shown (same rules as before for team vs FFA)." />
+                </div>
                 <input
                   type="number"
                   min={0}
@@ -279,15 +251,14 @@ const HostGame = () => {
                   onChange={(e) => setNegPoints(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <p className="text-xs text-muted-foreground font-body">
-                  Subtracted when wrong before the full question is shown (same rules as before for
-                  team vs FFA).
-                </p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-body font-medium text-foreground">
-                  Answer countdown (seconds)
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-body font-medium text-foreground">
+                    Answer countdown (seconds)
+                  </label>
+                  <FieldTooltip text="After a buzz, time before an automatic incorrect (0 = off). The judge can still score sooner." />
+                </div>
                 <input
                   type="number"
                   min={0}
@@ -296,10 +267,6 @@ const HostGame = () => {
                   onChange={(e) => setAnswerCountdownSeconds(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <p className="text-xs text-muted-foreground font-body">
-                  After a buzz, time before an automatic incorrect (0 = off). The judge can still score
-                  sooner.
-                </p>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -342,6 +309,23 @@ const ModeButton = ({
     {icon}
     {label}
   </button>
+);
+
+const FieldTooltip = ({ text }: { text: string }) => (
+  <TooltipProvider delayDuration={100}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label="Field description"
+          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+        >
+          <CircleHelp className="h-4 w-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-xs leading-snug">{text}</TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
 );
 
 export default HostGame;

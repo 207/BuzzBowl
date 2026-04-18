@@ -21,7 +21,28 @@ export async function fetchRandomTossups(params: {
     const text = await res.text();
     throw new Error(`QB Reader ${res.status}: ${text.slice(0, 200)}`);
   }
-  const data = (await res.json()) as { tossups?: TossupDTO[] };
+  const data = (await res.json()) as {
+    tossups?: Array<
+      TossupDTO & {
+        category?: string | string[] | null;
+      }
+    >;
+  };
   const list = data.tossups ?? [];
-  return list.filter((t) => t.question_sanitized && t.answer_sanitized);
+  return list
+    .map((t) => {
+      const categoryRaw = t.category;
+      const category = Array.isArray(categoryRaw)
+        ? categoryRaw.join(" / ")
+        : typeof categoryRaw === "string"
+          ? categoryRaw
+          : null;
+      return {
+        _id: t._id,
+        question_sanitized: t.question_sanitized,
+        answer_sanitized: t.answer_sanitized,
+        category: category?.trim() || null,
+      } satisfies TossupDTO;
+    })
+    .filter((t) => t.question_sanitized && t.answer_sanitized);
 }

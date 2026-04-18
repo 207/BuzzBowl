@@ -8,7 +8,9 @@ import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { NextRoundCountdown } from "@/components/NextRoundCountdown";
 import { GameOverScreen } from "@/components/GameOverScreen";
 import PlayerList from "@/components/PlayerList";
+import { BreakTopThree } from "@/components/BreakTopThree";
 import { mapServerPlayers } from "@/lib/gameTypes";
+import { quizbowlCategoryEmoji } from "@/lib/categoryEmoji";
 
 const HostLive = () => {
   const navigate = useNavigate();
@@ -99,6 +101,7 @@ const HostLive = () => {
             <p className="mt-2 text-lg font-heading text-accent">{state.answer}</p>
           </div>
         ) : null}
+        <BreakTopThree players={state.players} gameMode={state.gameMode} />
         <PlayerList players={uiPlayers} mode={uiMode} />
         <p className="max-w-md text-center text-sm text-muted-foreground font-body">
           <span className="text-foreground font-medium">Judge</span> advances the game from their phone (next question).
@@ -109,12 +112,21 @@ const HostLive = () => {
 
   if (state.phase === "playing" && state.tossup) {
     const t = state.tossup;
+    const categoryBadge =
+      state.settings.questionSource === "qbreader"
+        ? `${quizbowlCategoryEmoji(t.category)} ${t.category ?? "Unknown"}`
+        : null;
     return (
       <div className="min-h-screen flex flex-col px-4 py-8 max-w-4xl mx-auto w-full gap-6">
         <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground font-body">
           <span>
             Question {state.currentTossupIndex + 1} / {state.totalTossups}
           </span>
+          {categoryBadge ? (
+            <span className="rounded-full border border-border px-2 py-0.5 text-foreground">
+              {categoryBadge}
+            </span>
+          ) : null}
           <span>
             Judge:{" "}
             <span className="text-foreground font-medium">
@@ -151,7 +163,10 @@ const HostLive = () => {
               Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName}</span>
             </p>
             {(t.answerDeadlineMs ?? null) != null && (
-              <AnswerCountdown answerDeadlineMs={t.answerDeadlineMs} />
+              <AnswerCountdown
+                answerDeadlineMs={t.answerDeadlineMs}
+                maxSeconds={state.settings.answerCountdownSeconds}
+              />
             )}
           </div>
         )}

@@ -29,6 +29,7 @@ export interface ServerGameSettings {
 
 export interface ServerTossup {
   tossupId: string;
+  category: string | null;
   revealedText: string;
   revealComplete: boolean;
   revealPaused: boolean;

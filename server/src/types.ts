@@ -20,6 +20,7 @@ export interface TossupDTO {
   _id: string;
   question_sanitized: string;
   answer_sanitized: string;
+  category?: string | null;
 }
 
 export type QuestionSource = "qbreader" | "opentdb";
@@ -45,6 +46,7 @@ export interface GameSettings {
 
 export interface PublicTossupState {
   tossupId: string;
+  category: string | null;
   revealedText: string;
   revealComplete: boolean;
   revealPaused: boolean;

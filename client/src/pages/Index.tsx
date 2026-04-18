@@ -1,11 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Zap, Users } from "lucide-react";
+import { QUIZBOWL_CATEGORY_EMOJIS } from "@/lib/categoryEmoji";
 
 const Index = () => {
   const navigate = useNavigate();
   const [joinCode, setJoinCode] = useState("");
+  const floatingDecor = useMemo(() => {
+    const pool = [...QUIZBOWL_CATEGORY_EMOJIS, "🎯", "⚡", "🧠", "🏆", "✨", "🎮"];
+    for (let i = pool.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = pool[i]!;
+      pool[i] = pool[j]!;
+      pool[j] = tmp;
+    }
+    return pool.slice(0, 5);
+  }, []);
 
   const handleQuickJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,11 +31,11 @@ const Index = () => {
       <div className="absolute inset-0 bg-gradient-hero" />
 
       {/* Floating decorative shapes */}
-      <div className="absolute top-16 left-[10%] text-6xl animate-float opacity-20 select-none">🎯</div>
-      <div className="absolute top-32 right-[15%] text-5xl animate-float opacity-15 select-none" style={{ animationDelay: "0.8s" }}>⚡</div>
-      <div className="absolute bottom-32 left-[20%] text-4xl animate-float opacity-15 select-none" style={{ animationDelay: "1.5s" }}>🧠</div>
-      <div className="absolute bottom-24 right-[10%] text-5xl animate-float opacity-20 select-none" style={{ animationDelay: "0.4s" }}>🏆</div>
-      <div className="absolute top-1/2 left-[5%] text-3xl animate-float opacity-10 select-none" style={{ animationDelay: "2s" }}>✨</div>
+      <div className="absolute top-16 left-[10%] text-6xl animate-float opacity-20 select-none">{floatingDecor[0]}</div>
+      <div className="absolute top-32 right-[15%] text-5xl animate-float opacity-15 select-none" style={{ animationDelay: "0.8s" }}>{floatingDecor[1]}</div>
+      <div className="absolute bottom-32 left-[20%] text-4xl animate-float opacity-15 select-none" style={{ animationDelay: "1.5s" }}>{floatingDecor[2]}</div>
+      <div className="absolute bottom-24 right-[10%] text-5xl animate-float opacity-20 select-none" style={{ animationDelay: "0.4s" }}>{floatingDecor[3]}</div>
+      <div className="absolute top-1/2 left-[5%] text-3xl animate-float opacity-10 select-none" style={{ animationDelay: "2s" }}>{floatingDecor[4]}</div>
 
       {/* Main content */}
       <main className="relative z-10 flex min-h-0 w-full min-w-0 flex-1 items-center justify-center px-4 py-10 sm:py-14 md:py-16">

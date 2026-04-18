@@ -1,0 +1,23 @@
+/** One-liners shown during the pre-round countdown. */
+export const COUNTDOWN_WAIT_BLURBS = [
+  "Have you been studying?",
+  "Put your thinking cap on.",
+  "Big brain energy loading…",
+  "Hydrate. Blink. Buzz.",
+  "No peeking at the answer key.",
+  "Warm up those buzzer fingers.",
+  "The category is vibes (it is not).",
+  "Remember: silence is not a point.",
+  "Confidence is points-adjacent.",
+  "If in doubt, buzz with conviction (your coach may disagree).",
+  "This is a judgment-free zone (except for judging).",
+  "Neurons: assemble.",
+  "Quick stretch — trivia waits for no one.",
+  "You vs the question: a timeless rivalry.",
+  "Fortune favors the well-read.",
+  "Deep breath. Shallow answers still count if correct.",
+  "The host believes in you (probably).",
+  "Mental notes only — no actual notes.",
+  "Speed matters. Accuracy matters more. Drama matters most.",
+  "Okay, okay… focus mode: on.",
+] as const;

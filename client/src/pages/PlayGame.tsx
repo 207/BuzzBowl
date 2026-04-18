@@ -8,6 +8,8 @@ import { emitReaderControl, getSocket, type ReaderControlEvent } from "@/lib/soc
 import { hostKey, playerKey } from "@/lib/roomStorage";
 import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { NextRoundCountdown } from "@/components/NextRoundCountdown";
+import { BreakTopThree } from "@/components/BreakTopThree";
+import { quizbowlCategoryEmoji } from "@/lib/categoryEmoji";
 import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
@@ -133,8 +135,11 @@ const PlayGame = () => {
             <p className="mt-2 text-base font-heading text-accent">{state.answer}</p>
           </div>
         ) : null}
+        <BreakTopThree players={state.players} gameMode={state.gameMode} />
         {state.gameMode === "ffa" && (
-          <p className="font-mono text-2xl text-primary">{me?.score ?? 0} pts</p>
+          <p className="text-sm text-muted-foreground font-body">
+            Your score: <span className="font-mono font-semibold text-primary">{me?.score ?? 0}</span>
+          </p>
         )}
         {state.gameMode === "team" && (
           <p className="text-muted-foreground font-body text-sm">
@@ -172,6 +177,10 @@ const PlayGame = () => {
 
     const revealToggleDisabled = t.revealComplete;
     const revealToggleLabel = t.revealComplete ? "Reveal done" : t.revealPaused ? "Resume" : "Pause";
+    const categoryBadge =
+      state.settings.questionSource === "qbreader"
+        ? `${quizbowlCategoryEmoji(t.category)} ${t.category ?? "Unknown"}`
+        : null;
 
     return (
       <div className="flex min-h-dvh flex-col bg-background">
@@ -200,6 +209,11 @@ const PlayGame = () => {
             <span>
               Question {state.currentTossupIndex + 1} / {state.totalTossups}
             </span>
+            {categoryBadge ? (
+              <span className="rounded-full border border-border px-2 py-0.5 text-foreground">
+                {categoryBadge}
+              </span>
+            ) : null}
             {state.gameMode === "team" && (
               <span>
                 {state.players.find((p) => p.id === state.activePlayerIdA)?.nickname ?? "—"} vs{" "}
@@ -284,6 +298,7 @@ const PlayGame = () => {
             {t.buzzPhase === "locked" && (t.answerDeadlineMs ?? null) != null && (
               <AnswerCountdown
                 answerDeadlineMs={t.answerDeadlineMs}
+                maxSeconds={state.settings.answerCountdownSeconds}
                 className="flex flex-col items-center justify-center rounded-2xl border border-primary/40 bg-primary/10 py-4"
               />
             )}
@@ -320,6 +335,7 @@ const PlayGame = () => {
               <AnswerCountdown
                 compact
                 answerDeadlineMs={t.answerDeadlineMs}
+                maxSeconds={state.settings.answerCountdownSeconds}
                 className="w-full max-w-sm flex flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 py-3"
               />
             )}
@@ -330,6 +346,7 @@ const PlayGame = () => {
                 <AnswerCountdown
                   compact
                   answerDeadlineMs={t.answerDeadlineMs}
+                  maxSeconds={state.settings.answerCountdownSeconds}
                   className="w-full max-w-sm flex flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 py-3"
                 />
               )}

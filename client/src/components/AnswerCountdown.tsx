@@ -7,24 +7,29 @@ function secondsLeft(deadlineMs: number | null): number | null {
 
 export function AnswerCountdown({
   answerDeadlineMs,
+  maxSeconds,
   className,
   compact,
 }: {
   answerDeadlineMs: number | null;
+  /** Optional display cap to avoid +1 from client/server clock skew. */
+  maxSeconds?: number;
   className?: string;
   /** Smaller digits for secondary placement */
   compact?: boolean;
 }) {
-  const [left, setLeft] = useState<number | null>(() => secondsLeft(answerDeadlineMs));
+  const cap = (n: number | null) =>
+    n == null || maxSeconds == null ? n : Math.min(maxSeconds, n);
+  const [left, setLeft] = useState<number | null>(() => cap(secondsLeft(answerDeadlineMs)));
 
   useEffect(() => {
-    setLeft(secondsLeft(answerDeadlineMs));
+    setLeft(cap(secondsLeft(answerDeadlineMs)));
     if (answerDeadlineMs == null) return;
     const id = window.setInterval(() => {
-      setLeft(secondsLeft(answerDeadlineMs));
+      setLeft(cap(secondsLeft(answerDeadlineMs)));
     }, 200);
     return () => window.clearInterval(id);
-  }, [answerDeadlineMs]);
+  }, [answerDeadlineMs, maxSeconds]);
 
   if (left == null) return null;
 
