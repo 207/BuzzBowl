@@ -206,7 +206,7 @@ const HostGame = () => {
                 className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4">
+            <CollapsibleContent className="space-y-4 overflow-hidden pt-4 text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-body font-medium text-foreground">
