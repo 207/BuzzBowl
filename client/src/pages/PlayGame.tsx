@@ -10,6 +10,8 @@ import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { NextRoundCountdown } from "@/components/NextRoundCountdown";
 import { BreakTopThree } from "@/components/BreakTopThree";
 import { quizbowlCategoryEmoji } from "@/lib/categoryEmoji";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { AVATARS } from "@/lib/gameTypes";
 import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
@@ -170,6 +172,13 @@ const PlayGame = () => {
     const canBuzz = t.buzzPhase === "open" && eligible;
     const iBuzzed = t.buzzPhase === "locked" && t.buzzWinnerId === playerId;
     const watching = state.gameMode === "team" && !eligible && !iBuzzed && !imJudge;
+    const buzzedPlayer = t.buzzWinnerId
+      ? state.players.find((p) => p.id === t.buzzWinnerId) ?? null
+      : null;
+    const buzzedPlayerEmoji =
+      buzzedPlayer != null
+        ? AVATARS[Math.max(0, state.players.findIndex((p) => p.id === buzzedPlayer.id)) % AVATARS.length]
+        : "👤";
 
     const skipVotes = state.ffaSkipVotes ?? [];
     const skipNeeded = state.ffaSkipVotesNeeded ?? 0;
@@ -202,6 +211,42 @@ const PlayGame = () => {
           <p className="bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
             Watching this matchup — buzzer off
           </p>
+        )}
+        {t.buzzPhase === "locked" && buzzedPlayer && (
+          <div className="mx-4 mt-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3">
+            <p className="text-center text-[11px] font-body uppercase tracking-wider text-muted-foreground">
+              Buzzed by
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-3">
+              <PlayerAvatar
+                size="row"
+                player={{
+                  avatar: buzzedPlayerEmoji,
+                  selfieDataUrl: buzzedPlayer.avatarDataUrl ?? null,
+                }}
+              />
+              <span className="text-xl font-heading font-bold text-foreground">
+                {buzzedPlayer.nickname}
+              </span>
+            </div>
+          </div>
+        )}
+        {imJudge && t.buzzPhase === "locked" && (
+          <div className="mx-4 mt-3 flex flex-wrap gap-2 justify-center">
+            <Button
+              variant="default"
+              size="lg"
+              className="bg-emerald-600 hover:bg-emerald-500"
+              onClick={() => emitAsReader("mark_correct")}
+            >
+              <Check className="w-5 h-5" />
+              Correct
+            </Button>
+            <Button variant="destructive" size="lg" onClick={() => emitAsReader("mark_incorrect")}>
+              <X className="w-5 h-5" />
+              Incorrect
+            </Button>
+          </div>
         )}
 
         <div className="flex flex-shrink-0 flex-col gap-2 px-4 pt-3">
@@ -302,31 +347,8 @@ const PlayGame = () => {
                 className="flex flex-col items-center justify-center rounded-2xl border border-primary/40 bg-primary/10 py-4"
               />
             )}
-            {t.buzzPhase === "locked" && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Button
-                  variant="default"
-                  size="lg"
-                  className="bg-emerald-600 hover:bg-emerald-500"
-                  onClick={() => emitAsReader("mark_correct")}
-                >
-                  <Check className="w-5 h-5" />
-                  Correct
-                </Button>
-                <Button variant="destructive" size="lg" onClick={() => emitAsReader("mark_incorrect")}>
-                  <X className="w-5 h-5" />
-                  Incorrect
-                </Button>
-              </div>
-            )}
           </div>
         )}
-        {isRemoteMode && t.buzzPhase === "locked" && (
-          <p className="mx-4 mt-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-center text-sm text-muted-foreground font-body">
-            Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName ?? "Player"}</span>
-          </p>
-        )}
-
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-8 pt-4">
           {t.buzzPhase === "locked" &&
             !imJudge &&

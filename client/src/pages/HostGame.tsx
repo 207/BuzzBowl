@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GameMode } from "@/lib/gameTypes";
 import { CATEGORIES, difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
@@ -30,7 +31,7 @@ const HostGame = () => {
   const [mode, setMode] = useState<GameMode>("ffa");
   const [playMode, setPlayMode] = useState<"house" | "remote">("remote");
   const [difficulty, setDifficulty] = useState("easy");
-  const [category, setCategory] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [questionCount, setQuestionCount] = useState(10);
   const [creating, setCreating] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -57,7 +58,7 @@ const HostGame = () => {
         playMode,
         questionSource: "qbreader",
         difficulty,
-        category,
+        category: selectedCategories.join(","),
         questionCount,
         hostName: "Host",
         correctMidRevealPoints,
@@ -173,18 +174,37 @@ const HostGame = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            >
-              <option value="">All categories</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div className="max-h-44 space-y-2 overflow-y-auto rounded-xl border border-border bg-muted/30 p-3">
+              {CATEGORIES.map((c) => {
+                const checked = selectedCategories.includes(c);
+                return (
+                  <label
+                    key={c}
+                    className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(next) => {
+                        const isOn = next === true;
+                        setSelectedCategories((prev) =>
+                          isOn ? [...prev, c] : prev.filter((x) => x !== c),
+                        );
+                      }}
+                    />
+                    <span>{c}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {selectedCategories.length > 0 ? (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                onClick={() => setSelectedCategories([])}
+              >
+                Clear categories
+              </button>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -206,8 +226,8 @@ const HostGame = () => {
                 className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 overflow-hidden pt-4 text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-              <div className="space-y-2">
+            <CollapsibleContent className="space-y-4 pt-4 text-sm">
+                <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-body font-medium text-foreground">
                     Points (interrupt — mid question)
@@ -222,8 +242,8 @@ const HostGame = () => {
                   onChange={(e) => setCorrectMidRevealPoints(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <label className="text-sm font-body font-medium text-foreground">
                   Points (after full question)
                 </label>
@@ -235,8 +255,8 @@ const HostGame = () => {
                   onChange={(e) => setCorrectFullRevealPoints(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-body font-medium text-foreground">
                     Negative points (wrong on interrupt)
@@ -251,8 +271,8 @@ const HostGame = () => {
                   onChange={(e) => setNegPoints(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-body font-medium text-foreground">
                     Answer countdown (seconds)
@@ -267,7 +287,7 @@ const HostGame = () => {
                   onChange={(e) => setAnswerCountdownSeconds(Number(e.target.value) || 0)}
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-              </div>
+                </div>
             </CollapsibleContent>
           </Collapsible>
 
