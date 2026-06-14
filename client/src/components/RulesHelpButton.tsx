@@ -70,6 +70,10 @@ const RulesHelpButton = () => (
               The judge marks <span className="text-foreground">Correct</span> or <span className="text-foreground">Incorrect</span>
               . Wrong answers on an interrupt can cost points (depending on host settings).
             </li>
+            <li>
+              After the full question is shown, each player gets <span className="text-foreground">one buzz</span> for that
+              question (no penalty, but no second guess).
+            </li>
           </ul>
         </section>
       </div>

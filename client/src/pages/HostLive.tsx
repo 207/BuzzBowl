@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useServerGameState } from "@/hooks/useServerGameState";
+import { useSocketResync } from "@/hooks/useSocketResync";
 import { getSocket } from "@/lib/socket";
 import { hostKey, playerKey } from "@/lib/roomStorage";
 import { toast } from "sonner";
@@ -19,17 +20,21 @@ const HostLive = () => {
   const hostSecret = useMemo(() => (code ? sessionStorage.getItem(hostKey(code)) : null), [code]);
   const state = useServerGameState(code);
 
+  const resyncHost = useCallback(() => {
+    if (!code || !hostSecret) return;
+    getSocket().emit("host_join", { roomCode: code, hostSecret }, (res: { error?: string }) => {
+      if (res?.error) toast.error("Could not reconnect as host.");
+    });
+  }, [code, hostSecret]);
+
   useEffect(() => {
     if (!code || !hostSecret) {
       toast.error("Missing host key — open the lobby from this device.");
       navigate("/");
-      return;
     }
-    const s = getSocket();
-    s.emit("host_join", { roomCode: code, hostSecret }, (res: { error?: string }) => {
-      if (res?.error) toast.error("Could not join as host.");
-    });
   }, [code, hostSecret, navigate]);
+
+  useSocketResync(Boolean(code && hostSecret), resyncHost);
 
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
@@ -55,6 +60,8 @@ const HostLive = () => {
     );
   }
 
+  const isHouse = state.settings.playMode === "house";
+  const tv = isHouse ? "tv" as const : "normal" as const;
   const uiMode = state.gameMode === "team" ? "teams" : "ffa";
   const uiPlayers = mapServerPlayers(state.players, state.gameMode);
 
@@ -75,10 +82,24 @@ const HostLive = () => {
 
   if (state.phase === "countdown") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-8">
-        <h2 className="text-2xl font-heading font-bold text-foreground">Get ready</h2>
-        <NextRoundCountdown countdownDeadlineMs={state.countdownDeadlineMs ?? null} />
-        <p className="max-w-md text-center text-sm text-muted-foreground font-body">
+      <div
+        className={`min-h-screen flex flex-col items-center justify-center gap-8 ${
+          isHouse ? "px-8 py-16 gap-12" : "px-4 py-12"
+        }`}
+      >
+        <h2
+          className={`font-heading font-bold text-foreground ${
+            isHouse ? "text-5xl" : "text-2xl"
+          }`}
+        >
+          Get ready
+        </h2>
+        <NextRoundCountdown countdownDeadlineMs={state.countdownDeadlineMs ?? null} scale={tv} />
+        <p
+          className={`max-w-md text-center text-muted-foreground font-body ${
+            isHouse ? "max-w-2xl text-xl" : "text-sm"
+          }`}
+        >
           Judge:{" "}
           <span className="text-foreground font-medium">
             {state.readerPlayerId
@@ -86,24 +107,54 @@ const HostLive = () => {
               : "—"}
           </span>
         </p>
-        <PlayerList players={uiPlayers} mode={uiMode} />
+        <PlayerList players={uiPlayers} mode={uiMode} scale={tv} />
       </div>
     );
   }
 
   if (state.phase === "between") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-8">
-        <h2 className="text-2xl font-heading font-bold text-foreground">Break</h2>
+      <div
+        className={`min-h-screen flex flex-col items-center justify-center gap-8 ${
+          isHouse ? "px-8 py-16 gap-12" : "px-4 py-12"
+        }`}
+      >
+        <h2
+          className={`font-heading font-bold text-foreground ${
+            isHouse ? "text-5xl" : "text-2xl"
+          }`}
+        >
+          Break
+        </h2>
         {state.answer ? (
-          <div className="game-card max-w-2xl w-full p-6 text-center">
-            <p className="text-xs font-body text-muted-foreground uppercase tracking-wider">Previous answer</p>
-            <p className="mt-2 text-lg font-heading text-accent">{state.answer}</p>
+          <div
+            className={`game-card w-full text-center ${
+              isHouse ? "max-w-4xl p-10" : "max-w-2xl p-6"
+            }`}
+          >
+            <p
+              className={`font-body text-muted-foreground uppercase tracking-wider ${
+                isHouse ? "text-base" : "text-xs"
+              }`}
+            >
+              Previous answer
+            </p>
+            <p
+              className={`mt-2 font-heading text-accent ${
+                isHouse ? "text-3xl" : "text-lg"
+              }`}
+            >
+              {state.answer}
+            </p>
           </div>
         ) : null}
-        <BreakTopThree players={state.players} gameMode={state.gameMode} />
-        <PlayerList players={uiPlayers} mode={uiMode} />
-        <p className="max-w-md text-center text-sm text-muted-foreground font-body">
+        <BreakTopThree players={state.players} gameMode={state.gameMode} scale={tv} />
+        <PlayerList players={uiPlayers} mode={uiMode} scale={tv} />
+        <p
+          className={`max-w-md text-center text-muted-foreground font-body ${
+            isHouse ? "max-w-3xl text-xl" : "text-sm"
+          }`}
+        >
           <span className="text-foreground font-medium">Judge</span> advances the game from their phone (next question).
         </p>
       </div>
@@ -117,13 +168,25 @@ const HostLive = () => {
         ? `${quizbowlCategoryEmoji(t.category)} ${t.category ?? "Unknown"}`
         : null;
     return (
-      <div className="min-h-screen flex flex-col px-4 py-8 max-w-4xl mx-auto w-full gap-6">
-        <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground font-body">
+      <div
+        className={`min-h-screen flex flex-col mx-auto w-full gap-6 ${
+          isHouse ? "px-8 py-10 max-w-6xl gap-8" : "px-4 py-8 max-w-4xl"
+        }`}
+      >
+        <div
+          className={`flex flex-wrap justify-between gap-2 text-muted-foreground font-body ${
+            isHouse ? "text-xl gap-4" : "text-sm"
+          }`}
+        >
           <span>
             Question {state.currentTossupIndex + 1} / {state.totalTossups}
           </span>
           {categoryBadge ? (
-            <span className="rounded-full border border-border px-2 py-0.5 text-foreground">
+            <span
+              className={`rounded-full border border-border text-foreground ${
+                isHouse ? "px-4 py-1 text-lg" : "px-2 py-0.5"
+              }`}
+            >
               {categoryBadge}
             </span>
           ) : null}
@@ -143,47 +206,66 @@ const HostLive = () => {
           )}
         </div>
 
-        <div className="game-card p-8 min-h-[12rem]">
-          <p className="text-xl md:text-2xl font-body leading-relaxed text-foreground">
+        <div className={`game-card ${isHouse ? "p-12 min-h-[16rem]" : "p-8 min-h-[12rem]"}`}>
+          <p
+            className={`font-body leading-relaxed text-foreground ${
+              isHouse ? "text-4xl md:text-5xl" : "text-xl md:text-2xl"
+            }`}
+          >
             {t.revealedText}
             {!t.revealComplete ? <span className="text-muted-foreground"> ▌</span> : null}
           </p>
           {t.revealPaused ? (
-            <p className="mt-4 text-sm text-primary font-body">Paused</p>
+            <p className={`mt-4 text-primary font-body ${isHouse ? "text-xl" : "text-sm"}`}>
+              Paused
+            </p>
           ) : null}
         </div>
 
         {t.buzzPhase === "locked" && (
-          <div className="game-card p-5 border-border/60">
-            <p className="text-sm text-muted-foreground font-body">
+          <div className={`game-card border-border/60 ${isHouse ? "p-8" : "p-5"}`}>
+            <p
+              className={`text-muted-foreground font-body ${
+                isHouse ? "text-lg" : "text-sm"
+              }`}
+            >
               Printed answer is on the <span className="text-foreground font-semibold">judge&apos;s phone</span> until
               this question ends (shown here on the break screen).
             </p>
-            <p className="mt-3 text-sm text-muted-foreground font-body">
+            <p
+              className={`mt-3 text-muted-foreground font-body ${
+                isHouse ? "text-xl mt-4" : "text-sm mt-3"
+              }`}
+            >
               Buzzed: <span className="text-foreground font-semibold">{t.buzzWinnerName}</span>
             </p>
             {(t.answerDeadlineMs ?? null) != null && (
               <AnswerCountdown
                 answerDeadlineMs={t.answerDeadlineMs}
                 maxSeconds={state.settings.answerCountdownSeconds}
+                large={isHouse}
               />
             )}
           </div>
         )}
 
-        <p className="text-center text-sm text-muted-foreground font-body max-w-xl mx-auto">
+        <p
+          className={`text-center text-muted-foreground font-body mx-auto ${
+            isHouse ? "text-xl max-w-3xl" : "text-sm max-w-xl"
+          }`}
+        >
           Pause, reveal, scoring, and skip are on the <span className="text-foreground font-medium">judge&apos;s phone</span>{" "}
           so this screen can stay up without someone at the laptop.
         </p>
 
-        <PlayerList players={uiPlayers} mode={uiMode} />
+        <PlayerList players={uiPlayers} mode={uiMode} scale={tv} />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-muted-foreground font-body">Waiting…</p>
+      <p className={`text-muted-foreground font-body ${isHouse ? "text-xl" : ""}`}>Waiting…</p>
     </div>
   );
 };

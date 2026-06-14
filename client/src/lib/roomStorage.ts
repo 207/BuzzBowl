@@ -11,7 +11,7 @@ export function setupKey(roomCode: string): string {
 }
 
 export const DEFAULT_HOST_ADVANCED = {
-  correctMidRevealPoints: 10,
+  correctMidRevealPoints: 15,
   correctFullRevealPoints: 10,
   negPoints: 5,
   answerCountdownSeconds: 10,

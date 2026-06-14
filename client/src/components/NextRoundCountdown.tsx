@@ -17,7 +17,14 @@ function blurbForDeadline(deadlineMs: number): string {
 }
 
 /** Shown between rounds while the server waits before loading the next question. */
-export function NextRoundCountdown({ countdownDeadlineMs }: { countdownDeadlineMs: number | null }) {
+export function NextRoundCountdown({
+  countdownDeadlineMs,
+  scale = "normal",
+}: {
+  countdownDeadlineMs: number | null;
+  scale?: "normal" | "tv";
+}) {
+  const tv = scale === "tv";
   const cap = (n: number | null) => (n == null ? n : Math.min(3, n));
   const [left, setLeft] = useState<number | null>(() => cap(secondsLeft(countdownDeadlineMs)));
 
@@ -36,10 +43,32 @@ export function NextRoundCountdown({ countdownDeadlineMs }: { countdownDeadlineM
   if (left == null) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-primary/30 bg-primary/10 px-8 py-10">
-      <p className="text-xs font-body uppercase tracking-wider text-muted-foreground">Next question in</p>
-      <p className="font-heading text-6xl font-black tabular-nums text-primary">{left}</p>
-      <p className="max-w-xs text-center text-sm italic text-muted-foreground font-body leading-snug">{blurb}</p>
+    <div
+      className={`flex flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 ${
+        tv ? "gap-6 px-12 py-14" : "gap-4 px-8 py-10"
+      }`}
+    >
+      <p
+        className={`font-body uppercase tracking-wider text-muted-foreground ${
+          tv ? "text-base" : "text-xs"
+        }`}
+      >
+        Next question in
+      </p>
+      <p
+        className={`font-heading font-black tabular-nums text-primary ${
+          tv ? "text-8xl" : "text-6xl"
+        }`}
+      >
+        {left}
+      </p>
+      <p
+        className={`max-w-xs text-center italic text-muted-foreground font-body leading-snug ${
+          tv ? "max-w-lg text-lg" : "text-sm"
+        }`}
+      >
+        {blurb}
+      </p>
     </div>
   );
 }

@@ -10,6 +10,7 @@ export function AnswerCountdown({
   maxSeconds,
   className,
   compact,
+  large,
 }: {
   answerDeadlineMs: number | null;
   /** Optional display cap to avoid +1 from client/server clock skew. */
@@ -17,6 +18,8 @@ export function AnswerCountdown({
   className?: string;
   /** Smaller digits for secondary placement */
   compact?: boolean;
+  /** Larger digits for TV display */
+  large?: boolean;
 }) {
   const cap = (n: number | null) =>
     n == null || maxSeconds == null ? n : Math.min(maxSeconds, n);
@@ -43,7 +46,7 @@ export function AnswerCountdown({
       <p className="text-xs font-body uppercase tracking-wider text-muted-foreground">Answer time</p>
       <p
         className={`font-heading font-black tabular-nums text-primary ${
-          compact ? "text-3xl" : "text-5xl"
+          large ? "text-7xl" : compact ? "text-3xl" : "text-5xl"
         }`}
       >
         {left}

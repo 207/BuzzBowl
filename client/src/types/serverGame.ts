@@ -64,6 +64,8 @@ export interface ServerGameState {
   ffaSkipVotes: string[];
   /** FFA during play: votes needed for unanimous skip (non-judge players only) */
   ffaSkipVotesNeeded: number;
+  /** After full reveal: players who already used their one post-reveal buzz */
+  postRevealBuzzUsedIds: string[];
   /** Server wall-clock deadline for the pre-round countdown (phase `countdown` only). */
   countdownDeadlineMs: number | null;
 }

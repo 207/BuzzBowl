@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { GameOverScreen } from "@/components/GameOverScreen";
 import { emitReaderControl, getSocket, type ReaderControlEvent } from "@/lib/socket";
+import { useSocketResync } from "@/hooks/useSocketResync";
 import { hostKey, playerKey } from "@/lib/roomStorage";
 import { AnswerCountdown } from "@/components/AnswerCountdown";
 import { NextRoundCountdown } from "@/components/NextRoundCountdown";
@@ -27,17 +28,18 @@ const PlayGame = () => {
   );
   const state = useServerGameState(code);
 
+  const resyncPlayer = useCallback(() => {
+    if (!code || !playerId) return;
+    getSocket().emit("player_identify", { roomCode: code, playerId }, () => {});
+  }, [code, playerId]);
+
   useEffect(() => {
     if (!code) return;
     const id = sessionStorage.getItem(playerKey(code));
     setPlayerId(id);
   }, [code]);
 
-  useEffect(() => {
-    if (!code || !playerId) return;
-    const s = getSocket();
-    s.emit("player_identify", { roomCode: code, playerId }, () => {});
-  }, [code, playerId]);
+  useSocketResync(Boolean(code && playerId), resyncPlayer);
 
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
@@ -183,6 +185,8 @@ const PlayGame = () => {
     const skipVotes = state.ffaSkipVotes ?? [];
     const skipNeeded = state.ffaSkipVotesNeeded ?? 0;
     const hasSkipVote = playerId ? skipVotes.includes(playerId) : false;
+    const usedPostRevealGuess =
+      Boolean(playerId && t.revealComplete && state.postRevealBuzzUsedIds?.includes(playerId));
 
     const revealToggleDisabled = t.revealComplete;
     const revealToggleLabel = t.revealComplete ? "Reveal done" : t.revealPaused ? "Resume" : "Pause";
@@ -203,9 +207,14 @@ const PlayGame = () => {
           )}
         </div>
         {imJudge && (
-          <p className="bg-primary/15 px-4 py-2 text-center text-sm font-body text-primary font-medium">
-            You&apos;re the judge — run controls below (buzzer off)
-          </p>
+          <div className="bg-primary/20 px-4 py-4 text-center border-b border-primary/30">
+            <p className="text-xl sm:text-2xl font-heading font-bold text-primary">
+              You&apos;re the judge
+            </p>
+            <p className="mt-1 text-sm sm:text-base font-body text-primary/80">
+              Run controls below — buzzer off
+            </p>
+          </div>
         )}
         {watching && (
           <p className="bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
@@ -382,8 +391,19 @@ const PlayGame = () => {
               Buzz
             </button>
           ) : (
-            <div className="h-52 w-full max-w-sm rounded-full bg-muted flex items-center justify-center text-muted-foreground font-heading text-xl">
-              {t.buzzPhase === "locked" ? "Locked" : "—"}
+            <div className="flex h-52 w-full max-w-sm flex-col items-center justify-center gap-2 rounded-full bg-muted px-6 text-center text-muted-foreground font-heading">
+              <span className="text-xl">
+                {t.buzzPhase === "locked"
+                  ? "Locked"
+                  : usedPostRevealGuess
+                    ? "Already guessed"
+                    : "—"}
+              </span>
+              {usedPostRevealGuess && t.buzzPhase === "open" ? (
+                <span className="text-xs font-body font-normal text-muted-foreground">
+                  One guess per person after the full question is shown
+                </span>
+              ) : null}
             </div>
           )}
         </div>

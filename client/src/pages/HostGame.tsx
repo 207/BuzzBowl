@@ -174,7 +174,7 @@ const HostGame = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
-            <div className="max-h-44 space-y-2 overflow-y-auto rounded-xl border border-border bg-muted/30 p-3">
+            <div className="scrollbar-themed max-h-44 space-y-2 overflow-y-auto rounded-xl border border-border bg-muted/30 p-3">
               {CATEGORIES.map((c) => {
                 const checked = selectedCategories.includes(c);
                 return (
@@ -196,15 +196,24 @@ const HostGame = () => {
                 );
               })}
             </div>
-            {selectedCategories.length > 0 ? (
+            <div className="flex gap-4">
               <button
                 type="button"
-                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                onClick={() => setSelectedCategories([...CATEGORIES])}
+                disabled={selectedCategories.length === CATEGORIES.length}
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                 onClick={() => setSelectedCategories([])}
+                disabled={selectedCategories.length === 0}
               >
                 Clear categories
               </button>
-            ) : null}
+            </div>
           </div>
 
           <div className="space-y-2">

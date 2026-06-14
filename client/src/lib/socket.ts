@@ -8,7 +8,13 @@ let _socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!_socket) {
-    _socket = io(url, { transports: ["websocket", "polling"] });
+    _socket = io(url, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
   }
   return _socket;
 }

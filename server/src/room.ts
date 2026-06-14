@@ -20,7 +20,7 @@ const defaultSettings: GameSettings = {
   difficulties: [],
   category: "",
   correctPoints: 10,
-  correctMidRevealPoints: 10,
+  correctMidRevealPoints: 15,
   negPoints: 5,
   answerCountdownSeconds: 10,
 };
@@ -72,6 +72,8 @@ export class Room {
     answerDeadlineMs: number | null;
     /** FFA: unanimous vote-skip tracking */
     ffaSkipVotes: Set<string> | null;
+    /** After full reveal: players who already buzzed (one guess each, no neg) */
+    postRevealBuzzUsedIds: Set<string>;
   } | null = null;
 
   /**
@@ -366,6 +368,7 @@ export class Room {
       buzzEligibleIds: null,
       answerDeadlineMs: null,
       ffaSkipVotes: this.gameMode === "ffa" ? new Set() : null,
+      postRevealBuzzUsedIds: new Set(),
     };
     if (!this.current.revealComplete) this.startRevealTicker();
     this.push();
@@ -438,14 +441,26 @@ export class Room {
     const reader = this.getReaderPlayerId();
     const withoutReader = (ids: string[]) =>
       reader ? ids.filter((id) => id !== reader) : ids;
+    let ids: string[];
     if (this.current.buzzEligibleIds)
-      return withoutReader([...this.current.buzzEligibleIds]);
-    if (this.gameMode === "ffa") {
-      return withoutReader([...this.players.keys()]);
+      ids = withoutReader([...this.current.buzzEligibleIds]);
+    else if (this.gameMode === "ffa") {
+      ids = withoutReader([...this.players.keys()]);
+    } else {
+      const a = this.teamOrderA[this.activeIndexA];
+      const b = this.teamOrderB[this.activeIndexB];
+      ids = withoutReader([a, b].filter(Boolean) as string[]);
     }
-    const a = this.teamOrderA[this.activeIndexA];
-    const b = this.teamOrderB[this.activeIndexB];
-    return withoutReader([a, b].filter(Boolean) as string[]);
+    if (this.current.revealComplete) {
+      ids = ids.filter((id) => !this.current!.postRevealBuzzUsedIds.has(id));
+    }
+    return ids;
+  }
+
+  private finishTossupIfNoEligibleBuzzers(): void {
+    if (!this.current || this.current.buzzPhase !== "open" || !this.current.revealComplete)
+      return;
+    if (this.eligibleBuzzPlayerIds().length === 0) this.finishTossupRound();
   }
 
   buzz(playerId: string): { ok: boolean; reason?: string } {
@@ -456,7 +471,6 @@ export class Room {
     const eligible = this.eligibleBuzzPlayerIds();
     if (!eligible.includes(playerId)) return { ok: false, reason: "not_eligible" };
     this.clearAnswerTimer();
-    if (this.current.ffaSkipVotes) this.current.ffaSkipVotes.clear();
     this.current.buzzPhase = "locked";
     this.current.buzzWinnerId = playerId;
     const player = this.players.get(playerId);
@@ -510,13 +524,16 @@ export class Room {
 
     if (this.gameMode === "ffa") {
       if (midReveal) winner.score -= neg;
-      if (this.current.ffaSkipVotes) this.current.ffaSkipVotes.clear();
       this.current.buzzPhase = "open";
       this.current.buzzWinnerId = null;
       this.current.buzzEligibleIds = null;
       if (!this.current.revealComplete && !this.revealTimer)
         this.startRevealTicker();
       this.push();
+      if (!midReveal) {
+        this.current.postRevealBuzzUsedIds.add(winner.id);
+        this.finishTossupIfNoEligibleBuzzers();
+      }
       return;
     }
 
@@ -529,7 +546,7 @@ export class Room {
       this.current.buzzWinnerId = null;
       this.current.buzzEligibleIds = other ? [other] : [];
     } else {
-      // No neg points after reveal complete (v1)
+      this.current.postRevealBuzzUsedIds.add(winner.id);
       this.current.buzzPhase = "open";
       this.current.buzzWinnerId = null;
       this.current.buzzEligibleIds = null;
@@ -537,6 +554,7 @@ export class Room {
     if (!this.current.revealComplete && !this.revealTimer)
       this.startRevealTicker();
     this.push();
+    if (!midReveal) this.finishTossupIfNoEligibleBuzzers();
   }
 
   private otherActiveRep(buzzedId: string): string | null {
@@ -701,6 +719,13 @@ export class Room {
         ? this.ffaSkipVotesNeededCount()
         : 0;
 
+    const postRevealBuzzUsedIds =
+      this.phase === "playing" &&
+      this.current?.revealComplete &&
+      this.current.buzzPhase === "open"
+        ? [...this.current.postRevealBuzzUsedIds]
+        : [];
+
     return {
       code: this.code,
       phase: this.phase,
@@ -722,6 +747,7 @@ export class Room {
       eligibleBuzzIds: this.eligibleBuzzPlayerIds(),
       ffaSkipVotes,
       ffaSkipVotesNeeded,
+      postRevealBuzzUsedIds,
       countdownDeadlineMs: this.phase === "countdown" ? this.countdownDeadlineMs : null,
     };
   }

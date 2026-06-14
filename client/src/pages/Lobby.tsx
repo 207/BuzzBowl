@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GameCodeDisplay from "@/components/GameCodeDisplay";
@@ -14,6 +14,7 @@ import {
   socketSettingsFromHostSetup,
 } from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
+import { useSocketResync } from "@/hooks/useSocketResync";
 import { Play, ArrowLeft, Shuffle, X, Camera } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,7 +43,7 @@ const Lobby = () => {
     setPlayerId(sessionStorage.getItem(playerKey(code)));
   }, [code]);
 
-  useEffect(() => {
+  const resyncSession = useCallback(() => {
     if (!code) return;
     const s = getSocket();
     if (hostSecret) {
@@ -52,25 +53,32 @@ const Lobby = () => {
       if (playerId) {
         s.emit("player_identify", { roomCode: code, playerId }, () => {});
       }
-      const st = readHostSetup(code);
-      if (st) {
-        s.emit("set_game_mode", {
-          roomCode: code,
-          hostSecret,
-          mode: st.mode === "teams" ? "team" : "ffa",
-        });
-        s.emit("update_settings", {
-          roomCode: code,
-          hostSecret,
-          settings: socketSettingsFromHostSetup(st, difficultyNumbers(st.difficulty)),
-        });
-      }
     } else if (playerId) {
       s.emit("player_identify", { roomCode: code, playerId }, (res: { error?: string }) => {
         if (res?.error) toast.error("Reconnect with name from Join.");
       });
     }
   }, [code, hostSecret, playerId]);
+
+  useEffect(() => {
+    if (!code || !hostSecret) return;
+    const s = getSocket();
+    const st = readHostSetup(code);
+    if (st) {
+      s.emit("set_game_mode", {
+        roomCode: code,
+        hostSecret,
+        mode: st.mode === "teams" ? "team" : "ffa",
+      });
+      s.emit("update_settings", {
+        roomCode: code,
+        hostSecret,
+        settings: socketSettingsFromHostSetup(st, difficultyNumbers(st.difficulty)),
+      });
+    }
+  }, [code, hostSecret]);
+
+  useSocketResync(Boolean(code && (hostSecret || playerId)), resyncSession);
 
   useEffect(() => {
     if (!gameState || !code) return;

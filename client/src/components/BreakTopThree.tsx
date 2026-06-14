@@ -9,23 +9,32 @@ const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉");
 export function BreakTopThree({
   players,
   gameMode,
+  scale = "normal",
 }: {
   players: ServerPlayer[];
   gameMode: ServerGameMode;
+  scale?: "normal" | "tv";
 }) {
+  const tv = scale === "tv";
   const top = topPlayersByScore(players, 3);
   if (top.length === 0) return null;
 
   return (
-    <div className="w-full max-w-md">
-      <p className="mb-2 text-center text-xs font-body font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className={`w-full ${tv ? "max-w-2xl" : "max-w-md"}`}>
+      <p
+        className={`mb-2 text-center font-body font-semibold uppercase tracking-wider text-muted-foreground ${
+          tv ? "mb-4 text-base" : "text-xs"
+        }`}
+      >
         Top scores
       </p>
       <ul className="game-card divide-y divide-border/60 overflow-hidden p-0">
         {top.map((p, i) => (
           <li
             key={p.id}
-            className="flex items-center justify-between gap-3 px-4 py-3 text-left font-body text-sm"
+            className={`flex items-center justify-between gap-3 text-left font-body ${
+              tv ? "px-6 py-4 text-lg" : "px-4 py-3 text-sm"
+            }`}
           >
             <span className="flex min-w-0 items-center gap-2 text-foreground">
               <span className="shrink-0 text-base" aria-hidden>
