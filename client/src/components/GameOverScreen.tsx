@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import { useAvatarModelPreload } from "@/hooks/useAvatarModelPreload";
 import confetti from "canvas-confetti";
 import { Home, RotateCcw, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Player } from "@/lib/gameTypes";
+import { podiumAnimationClip } from "@/lib/avatarModels";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import type { ServerGameMode } from "@/types/serverGame";
 
@@ -38,6 +40,8 @@ export function GameOverScreen({
   const remaining = sorted.slice(3);
   const isHost = variant === "host";
   const showCelebration = isHost || celebrate;
+
+  useAvatarModelPreload();
 
   useEffect(() => {
     if (!showCelebration) return;
@@ -134,10 +138,11 @@ export function GameOverScreen({
               {[1, 0, 2].map((idx) => {
                 const p = podium[idx];
                 if (!p) return <div key={`podium-${idx}`} />;
-                const place = idx + 1;
+                const place = (idx + 1) as 1 | 2 | 3;
                 const h =
-                  place === 1 ? "h-36" : place === 2 ? "h-28" : "h-24";
-                const avatarSize = place === 1 ? "podium" : "row";
+                  place === 1 ? "h-44" : place === 2 ? "h-36" : "h-32";
+                const avatarSize = place === 1 ? "podium" : "lobby";
+                const animClip = podiumAnimationClip(place);
                 const rankClass = place === 1 ? "text-xs" : "text-[10px]";
                 const nameClass =
                   place === 1
@@ -153,7 +158,7 @@ export function GameOverScreen({
                     title={`🐝 ${p.stats.buzzed} · Correct: ${p.stats.correct} · Wrong: ${p.stats.wrong}`}
                   >
                     <div className="flex justify-center">
-                      <PlayerAvatar player={p} size={avatarSize} />
+                      <PlayerAvatar player={p} size={avatarSize} clip={animClip} framed={false} />
                     </div>
                     <div className={`mt-1 text-muted-foreground ${rankClass}`}>#{place}</div>
                     <div className={`font-body font-semibold max-w-full ${nameClass}`}>
@@ -176,7 +181,7 @@ export function GameOverScreen({
                     title={`🐝 ${p.stats.buzzed} · Correct: ${p.stats.correct} · Wrong: ${p.stats.wrong}`}
                   >
                     <span className="text-sm font-heading font-bold text-muted-foreground w-8">#{i + 4}</span>
-                    <PlayerAvatar player={p} size="row" />
+                    <PlayerAvatar player={p} size="lobby" framed={false} />
                     <span className="flex-1 text-left font-body font-medium">{p.name}</span>
                     <span className="font-heading font-bold text-primary">{p.score}</span>
                     <div className="absolute -top-10 right-2 hidden group-hover:flex whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground shadow-lg">

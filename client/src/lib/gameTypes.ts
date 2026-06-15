@@ -1,6 +1,7 @@
 /** UI types shared with list components (matches former gameStore shape). */
 
 import type { ServerGameMode, ServerPlayer } from "@/types/serverGame";
+import { avatarForPlayerIndex, isAvatarId, type AvatarId } from "@/lib/avatarModels";
 
 export type GameMode = "ffa" | "teams";
 
@@ -9,8 +10,8 @@ export interface Player {
   name: string;
   team?: number;
   score: number;
-  avatar: string;
-  /** Join selfie (data URL); when set, UI shows photo instead of emoji */
+  avatarId: AvatarId;
+  /** Join selfie (data URL); when set, UI shows photo instead of 3D avatar */
   selfieDataUrl?: string | null;
   stats: {
     buzzed: number;
@@ -18,21 +19,6 @@ export interface Player {
     wrong: number;
   };
 }
-
-export const AVATARS = [
-  "🦊",
-  "🐸",
-  "🐙",
-  "🦄",
-  "🐲",
-  "🎃",
-  "👾",
-  "🤖",
-  "🐱",
-  "🦋",
-  "🌸",
-  "⚡",
-];
 
 export function mapServerPlayers(
   players: ServerPlayer[],
@@ -42,7 +28,7 @@ export function mapServerPlayers(
     id: p.id,
     name: p.nickname,
     score: p.score,
-    avatar: AVATARS[i % AVATARS.length],
+    avatarId: isAvatarId(p.avatarId) ? p.avatarId : avatarForPlayerIndex(i),
     selfieDataUrl: p.avatarDataUrl ?? null,
     stats: {
       buzzed: p.buzzCount,

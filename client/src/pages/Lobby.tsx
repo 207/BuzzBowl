@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GameCodeDisplay from "@/components/GameCodeDisplay";
 import PlayerList from "@/components/PlayerList";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { compressSelfieFile } from "@/lib/compressSelfie";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { difficultyNumbers } from "@/lib/qbreader";
@@ -15,7 +16,9 @@ import {
 } from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { useSocketResync } from "@/hooks/useSocketResync";
-import { Play, ArrowLeft, Shuffle, X, Camera } from "lucide-react";
+import { useAvatarModelPreload } from "@/hooks/useAvatarModelPreload";
+import type { AvatarId } from "@/lib/avatarModels";
+import { Play, ArrowLeft, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 const Lobby = () => {
@@ -37,6 +40,7 @@ const Lobby = () => {
   const [hostJoinBusy, setHostJoinBusy] = useState(false);
   const [hostSelfie, setHostSelfie] = useState<string | null>(null);
   const [hostSelfieBusy, setHostSelfieBusy] = useState(false);
+  const [hostAvatarId, setHostAvatarId] = useState<AvatarId>("fox");
 
   useEffect(() => {
     if (!code) return;
@@ -79,6 +83,8 @@ const Lobby = () => {
   }, [code, hostSecret]);
 
   useSocketResync(Boolean(code && (hostSecret || playerId)), resyncSession);
+
+  useAvatarModelPreload();
 
   useEffect(() => {
     if (!gameState || !code) return;
@@ -154,6 +160,7 @@ const Lobby = () => {
       {
         roomCode: code,
         nickname: hostJoinName.trim(),
+        avatarId: hostAvatarId,
         ...(hostSelfie ? { avatarDataUrl: hostSelfie } : {}),
       },
       (res: { error?: string; playerId?: string }) => {
@@ -173,9 +180,11 @@ const Lobby = () => {
     );
   };
 
-  const cycleTeam = (pid: string, team: "A" | "B" | null) => {
-    if (!code || !hostSecret) return;
-    const next = team === null ? "A" : team === "A" ? "B" : null;
+  const switchPlayerTeam = (pid: string) => {
+    if (!code || !hostSecret || !gameState) return;
+    const player = gameState.players.find((p) => p.id === pid);
+    if (!player) return;
+    const next = player.team === "A" ? "B" : player.team === "B" ? "A" : "A";
     getSocket().emit("set_player_team", {
       roomCode: code,
       hostSecret,
@@ -226,7 +235,19 @@ const Lobby = () => {
 
         <GameCodeDisplay code={code} />
 
-        <PlayerList players={uiPlayers} mode={uiMode} />
+        <PlayerList
+          players={uiPlayers}
+          mode={uiMode}
+          host={
+            isHost && gameState && gameState.players.length > 0
+              ? {
+                  onKick: kickPlayer,
+                  onSwitchTeam: uiMode === "teams" ? switchPlayerTeam : undefined,
+                  onRandomizeTeams: uiMode === "teams" ? randomizeTeams : undefined,
+                }
+              : undefined
+          }
+        />
 
         {needsRemoteHostPlayer && (
           <div className="game-card p-4 space-y-3">
@@ -241,6 +262,7 @@ const Lobby = () => {
               maxLength={24}
               className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
+            <AvatarPicker value={hostAvatarId} onChange={setHostAvatarId} />
             <div className="flex items-center gap-2">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-body">
                 <Camera className="h-4 w-4" />
@@ -266,50 +288,6 @@ const Lobby = () => {
             >
               Join this room as player
             </Button>
-          </div>
-        )}
-
-        {isHost && gameState?.players.length > 0 && (
-          <div className="game-card p-4 space-y-3">
-            <p className="text-sm font-body text-muted-foreground">
-              Host controls: click a player to assign team (team mode), hover row to kick.
-            </p>
-            {gameState.gameMode === "team" && (
-              <Button variant="outline" size="sm" className="w-full" onClick={randomizeTeams}>
-                <Shuffle className="w-4 h-4" />
-                Randomize teams
-              </Button>
-            )}
-            <div className="space-y-2">
-              {gameState.players.map((p) => (
-                <div
-                  key={p.id}
-                  className="group flex items-center gap-2 rounded-lg bg-muted/70 border border-border/50 px-3 py-2"
-                >
-                  {gameState.gameMode === "team" ? (
-                    <button
-                      type="button"
-                      onClick={() => cycleTeam(p.id, p.team)}
-                      className="flex-1 text-left text-sm font-body hover:text-foreground transition-colors"
-                    >
-                      {p.nickname}:{" "}
-                      {p.team === null ? "—" : p.team === "A" ? gameState.teamNames.A : gameState.teamNames.B}
-                    </button>
-                  ) : (
-                    <span className="flex-1 text-left text-sm font-body">{p.nickname}</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => kickPlayer(p.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    aria-label={`Kick ${p.nickname}`}
-                    title={`Kick ${p.nickname}`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 

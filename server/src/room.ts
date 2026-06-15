@@ -1,3 +1,4 @@
+import { parseAvatarId } from "./avatarIds.js";
 import { customAlphabet } from "nanoid";
 import type {
   BuzzPhase,
@@ -98,11 +99,45 @@ export class Room {
   /** Judge who may tap “next question” on break; set with `lastRoundAnswer` before `current` is cleared. */
   readerBetweenPlayerId: string | null = null;
 
+  /** Brief judge gesture flash after correct/incorrect (all clients). */
+  judgeVerdictFlash: {
+    judgePlayerId: string;
+    verdict: "correct" | "incorrect";
+    deadlineMs: number;
+  } | null = null;
+  private judgeVerdictTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Set by socket layer to push state after each change */
   notify: (() => void) | null = null;
 
   private push(): void {
     this.notify?.();
+  }
+
+  private clearJudgeVerdictFlash(): void {
+    if (this.judgeVerdictTimer) {
+      clearTimeout(this.judgeVerdictTimer);
+      this.judgeVerdictTimer = null;
+    }
+    this.judgeVerdictFlash = null;
+  }
+
+  private showJudgeVerdictFlash(verdict: "correct" | "incorrect"): void {
+    const judgeId = this.getReaderPlayerId();
+    if (!judgeId) return;
+    this.clearJudgeVerdictFlash();
+    const durationMs = 2800;
+    this.judgeVerdictFlash = {
+      judgePlayerId: judgeId,
+      verdict,
+      deadlineMs: Date.now() + durationMs,
+    };
+    this.judgeVerdictTimer = setTimeout(() => {
+      this.judgeVerdictFlash = null;
+      this.judgeVerdictTimer = null;
+      this.push();
+    }, durationMs);
+    this.push();
   }
 
   static create(): Room {
@@ -122,6 +157,7 @@ export class Room {
     nickname: string,
     socketId: string,
     avatarDataUrl?: string | null,
+    avatarId?: string | null,
   ): Player {
     const id = genPlayerId();
     const p: Player = {
@@ -134,6 +170,7 @@ export class Room {
       correctCount: 0,
       wrongCount: 0,
       avatarDataUrl: avatarDataUrl ?? null,
+      avatarId: parseAvatarId(avatarId, this.players.size),
     };
     this.players.set(id, p);
     this.push();
@@ -349,6 +386,7 @@ export class Room {
   private loadTossupAtIndex(idx: number): void {
     this.clearRevealTimer();
     this.clearAnswerTimer();
+    this.clearJudgeVerdictFlash();
     this.current = null;
     if (idx < 0 || idx >= this.tossupQueue.length) {
       this.phase = "ended";
@@ -471,6 +509,7 @@ export class Room {
     const eligible = this.eligibleBuzzPlayerIds();
     if (!eligible.includes(playerId)) return { ok: false, reason: "not_eligible" };
     this.clearAnswerTimer();
+    this.clearJudgeVerdictFlash();
     this.current.buzzPhase = "locked";
     this.current.buzzWinnerId = playerId;
     const player = this.players.get(playerId);
@@ -511,6 +550,7 @@ export class Room {
       if (winner.team === "A") this.teamScoreA += pts;
       if (winner.team === "B") this.teamScoreB += pts;
     }
+    this.showJudgeVerdictFlash("correct");
     this.finishTossupRound();
   }
 
@@ -527,18 +567,7 @@ export class Room {
       this.current.buzzPhase = "open";
       this.current.buzzWinnerId = null;
       this.current.buzzEligibleIds = null;
-      if (!this.current.revealComplete && !this.revealTimer)
-        this.startRevealTicker();
-      this.push();
-      if (!midReveal) {
-        this.current.postRevealBuzzUsedIds.add(winner.id);
-        this.finishTossupIfNoEligibleBuzzers();
-      }
-      return;
-    }
-
-    // Team mode
-    if (midReveal) {
+    } else if (midReveal) {
       if (winner.team === "A") this.teamScoreA -= neg;
       if (winner.team === "B") this.teamScoreB -= neg;
       const other = this.otherActiveRep(winner.id);
@@ -551,8 +580,14 @@ export class Room {
       this.current.buzzWinnerId = null;
       this.current.buzzEligibleIds = null;
     }
+
+    if (!midReveal && this.gameMode === "ffa") {
+      this.current.postRevealBuzzUsedIds.add(winner.id);
+    }
+
     if (!this.current.revealComplete && !this.revealTimer)
       this.startRevealTicker();
+    this.showJudgeVerdictFlash("incorrect");
     this.push();
     if (!midReveal) this.finishTossupIfNoEligibleBuzzers();
   }
@@ -566,6 +601,7 @@ export class Room {
   }
 
   skipQuestion(): void {
+    this.clearJudgeVerdictFlash();
     this.skipNoProgressTossupPending = true;
     this.finishTossupRound();
   }
@@ -694,6 +730,7 @@ export class Room {
       correctCount: p.correctCount,
       wrongCount: p.wrongCount,
       ...(p.avatarDataUrl ? { avatarDataUrl: p.avatarDataUrl } : {}),
+      avatarId: p.avatarId,
     }));
     const activeA = this.teamOrderA[this.activeIndexA] ?? null;
     const activeB = this.teamOrderB[this.activeIndexB] ?? null;
@@ -748,6 +785,7 @@ export class Room {
       ffaSkipVotes,
       ffaSkipVotesNeeded,
       postRevealBuzzUsedIds,
+      judgeVerdictFlash: this.judgeVerdictFlash,
       countdownDeadlineMs: this.phase === "countdown" ? this.countdownDeadlineMs : null,
     };
   }

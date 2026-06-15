@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -9,6 +10,7 @@ import HostLive from "./pages/HostLive.tsx";
 import JoinGame from "./pages/JoinGame.tsx";
 import Lobby from "./pages/Lobby.tsx";
 import PlayGame from "./pages/PlayGame.tsx";
+const AvatarPreviewLab = lazy(() => import("./pages/dev/AvatarPreviewLab.tsx"));
 import HomeButton from "./components/HomeButton.tsx";
 import RulesHelpButton from "./components/RulesHelpButton.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -31,6 +33,20 @@ const App = () => (
           <Route path="/join/:code" element={<JoinGame />} />
           <Route path="/lobby/:code" element={<Lobby />} />
           <Route path="/play/:code" element={<PlayGame />} />
+          <Route
+            path="/dev/avatars"
+            element={
+              <Suspense
+                fallback={
+                  <div className="flex min-h-dvh items-center justify-center text-muted-foreground font-body">
+                    Loading avatar lab…
+                  </div>
+                }
+              >
+                <AvatarPreviewLab />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

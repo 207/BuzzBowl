@@ -11,6 +11,7 @@ export interface ServerPlayer {
   correctCount: number;
   wrongCount: number;
   avatarDataUrl?: string;
+  avatarId: string;
 }
 
 export type ServerQuestionSource = "qbreader" | "opentdb";
@@ -66,6 +67,12 @@ export interface ServerGameState {
   ffaSkipVotesNeeded: number;
   /** After full reveal: players who already used their one post-reveal buzz */
   postRevealBuzzUsedIds: string[];
+  /** Judge gesture flash after marking correct/incorrect */
+  judgeVerdictFlash: {
+    judgePlayerId: string;
+    verdict: "correct" | "incorrect";
+    deadlineMs: number;
+  } | null;
   /** Server wall-clock deadline for the pre-round countdown (phase `countdown` only). */
   countdownDeadlineMs: number | null;
 }

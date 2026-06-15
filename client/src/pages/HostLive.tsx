@@ -12,6 +12,9 @@ import PlayerList from "@/components/PlayerList";
 import { BreakTopThree } from "@/components/BreakTopThree";
 import { mapServerPlayers } from "@/lib/gameTypes";
 import { quizbowlCategoryEmoji } from "@/lib/categoryEmoji";
+import { JudgeVerdictFlash } from "@/components/JudgeVerdictFlash";
+import { useAvatarModelPreload } from "@/hooks/useAvatarModelPreload";
+import { judgeVerdictOverlayProps } from "@/lib/judgeVerdictOverlay";
 
 const HostLive = () => {
   const navigate = useNavigate();
@@ -35,6 +38,8 @@ const HostLive = () => {
   }, [code, hostSecret, navigate]);
 
   useSocketResync(Boolean(code && hostSecret), resyncHost);
+
+  useAvatarModelPreload();
 
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
@@ -64,6 +69,10 @@ const HostLive = () => {
   const tv = isHouse ? "tv" as const : "normal" as const;
   const uiMode = state.gameMode === "team" ? "teams" : "ffa";
   const uiPlayers = mapServerPlayers(state.players, state.gameMode);
+  const verdictOverlayProps = judgeVerdictOverlayProps(state);
+  const judgeVerdictOverlay = verdictOverlayProps ? (
+    <JudgeVerdictFlash {...verdictOverlayProps} />
+  ) : null;
 
   if (state.phase === "ended") {
     return (
@@ -115,7 +124,7 @@ const HostLive = () => {
   if (state.phase === "between") {
     return (
       <div
-        className={`min-h-screen flex flex-col items-center justify-center gap-8 ${
+        className={`relative min-h-screen flex flex-col items-center justify-center gap-8 ${
           isHouse ? "px-8 py-16 gap-12" : "px-4 py-12"
         }`}
       >
@@ -157,6 +166,7 @@ const HostLive = () => {
         >
           <span className="text-foreground font-medium">Judge</span> advances the game from their phone (next question).
         </p>
+        {judgeVerdictOverlay}
       </div>
     );
   }
@@ -169,7 +179,7 @@ const HostLive = () => {
         : null;
     return (
       <div
-        className={`min-h-screen flex flex-col mx-auto w-full gap-6 ${
+        className={`relative min-h-screen flex flex-col mx-auto w-full gap-6 ${
           isHouse ? "px-8 py-10 max-w-6xl gap-8" : "px-4 py-8 max-w-4xl"
         }`}
       >
@@ -259,6 +269,7 @@ const HostLive = () => {
         </p>
 
         <PlayerList players={uiPlayers} mode={uiMode} scale={tv} />
+        {judgeVerdictOverlay}
       </div>
     );
   }

@@ -15,3 +15,6 @@ coverage
 
 # OS / editor
 Thumbs.db
+
+# Raw 3D source exports (GLBs live in client/public/models/animals)
+client/src/Models/

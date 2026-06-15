@@ -12,7 +12,9 @@ import { NextRoundCountdown } from "@/components/NextRoundCountdown";
 import { BreakTopThree } from "@/components/BreakTopThree";
 import { quizbowlCategoryEmoji } from "@/lib/categoryEmoji";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
-import { AVATARS } from "@/lib/gameTypes";
+import { JudgeVerdictFlash } from "@/components/JudgeVerdictFlash";
+import { useAvatarModelPreload } from "@/hooks/useAvatarModelPreload";
+import { judgeVerdictOverlayProps } from "@/lib/judgeVerdictOverlay";
 import { Pause, Play, SkipForward, Check, X, FastForward, Maximize2 } from "lucide-react";
 
 const PlayGame = () => {
@@ -40,6 +42,8 @@ const PlayGame = () => {
   }, [code]);
 
   useSocketResync(Boolean(code && playerId), resyncPlayer);
+
+  useAvatarModelPreload();
 
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
@@ -130,8 +134,9 @@ const PlayGame = () => {
   if (state.phase === "between") {
     const canAdvance = state.betweenControlsPlayerId === playerId;
     const isLastBreak = state.currentTossupIndex + 1 >= state.totalTossups;
+    const verdictOverlay = judgeVerdictOverlayProps(state);
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="relative min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-xl font-heading text-foreground">Round break</p>
         {state.answer ? (
           <div className="game-card w-full max-w-md p-5">
@@ -160,6 +165,7 @@ const PlayGame = () => {
             Waiting for the judge to start the next question…
           </p>
         )}
+        {verdictOverlay ? <JudgeVerdictFlash {...verdictOverlay} /> : null}
       </div>
     );
   }
@@ -177,10 +183,10 @@ const PlayGame = () => {
     const buzzedPlayer = t.buzzWinnerId
       ? state.players.find((p) => p.id === t.buzzWinnerId) ?? null
       : null;
-    const buzzedPlayerEmoji =
-      buzzedPlayer != null
-        ? AVATARS[Math.max(0, state.players.findIndex((p) => p.id === buzzedPlayer.id)) % AVATARS.length]
-        : "👤";
+    const uiPlayers = mapServerPlayers(state.players, state.gameMode);
+    const buzzedUiPlayer = buzzedPlayer
+      ? uiPlayers.find((p) => p.id === buzzedPlayer.id) ?? null
+      : null;
 
     const skipVotes = state.ffaSkipVotes ?? [];
     const skipNeeded = state.ffaSkipVotesNeeded ?? 0;
@@ -194,6 +200,7 @@ const PlayGame = () => {
       state.settings.questionSource === "qbreader"
         ? `${quizbowlCategoryEmoji(t.category)} ${t.category ?? "Unknown"}`
         : null;
+    const verdictOverlay = judgeVerdictOverlayProps(state);
 
     return (
       <div className="flex min-h-dvh flex-col bg-background">
@@ -221,21 +228,15 @@ const PlayGame = () => {
             Watching this matchup — buzzer off
           </p>
         )}
-        {t.buzzPhase === "locked" && buzzedPlayer && (
+        {t.buzzPhase === "locked" && buzzedUiPlayer && (
           <div className="mx-4 mt-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3">
             <p className="text-center text-[11px] font-body uppercase tracking-wider text-muted-foreground">
               Buzzed by
             </p>
             <div className="mt-2 flex items-center justify-center gap-3">
-              <PlayerAvatar
-                size="row"
-                player={{
-                  avatar: buzzedPlayerEmoji,
-                  selfieDataUrl: buzzedPlayer.avatarDataUrl ?? null,
-                }}
-              />
+              <PlayerAvatar size="row" player={buzzedUiPlayer} clip="idle" />
               <span className="text-xl font-heading font-bold text-foreground">
-                {buzzedPlayer.nickname}
+                {buzzedUiPlayer.name}
               </span>
             </div>
           </div>
@@ -407,6 +408,7 @@ const PlayGame = () => {
             </div>
           )}
         </div>
+        {verdictOverlay ? <JudgeVerdictFlash {...verdictOverlay} /> : null}
       </div>
     );
   }

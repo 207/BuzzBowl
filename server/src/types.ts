@@ -14,6 +14,8 @@ export interface Player {
   wrongCount: number;
   /** Optional join selfie (data URL), session-only */
   avatarDataUrl?: string | null;
+  /** Kenney animal id; defaults by join order when omitted */
+  avatarId: string;
 }
 
 export interface TossupDTO {

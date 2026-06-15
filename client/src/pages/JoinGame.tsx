@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { compressSelfieFile } from "@/lib/compressSelfie";
 import { getSocket } from "@/lib/socket";
 import { playerKey } from "@/lib/roomStorage";
+import type { AvatarId } from "@/lib/avatarModels";
 import { ArrowLeft, Camera, LogIn, X } from "lucide-react";
 
 const JoinGame = () => {
@@ -16,6 +18,7 @@ const JoinGame = () => {
   const [busy, setBusy] = useState(false);
   const [selfie, setSelfie] = useState<string | null>(null);
   const [selfieBusy, setSelfieBusy] = useState(false);
+  const [avatarId, setAvatarId] = useState<AvatarId>("fox");
 
   const handleJoin = () => {
     const c = code.trim().toUpperCase();
@@ -28,6 +31,7 @@ const JoinGame = () => {
       {
         roomCode: c,
         nickname: name.trim() || "Player",
+        avatarId,
         ...(selfie ? { avatarDataUrl: selfie } : {}),
       },
       (res: { error?: string; playerId?: string }) => {
@@ -93,6 +97,8 @@ const JoinGame = () => {
               className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             />
           </div>
+
+          <AvatarPicker value={avatarId} onChange={setAvatarId} />
 
           <div className="space-y-2">
             <label className="text-sm font-body font-medium text-foreground">Selfie (optional)</label>
