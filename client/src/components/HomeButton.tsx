@@ -5,7 +5,22 @@ const HomeButton = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (location.pathname === "/") return null;
+  const hiddenPaths = [
+    "/",
+    "/host",
+    "/join",
+  ];
+
+  const hiddenPathPatterns = [
+    /^\/join\/.+$/,
+    /^\/lobby\/.+$/,
+  ];
+
+  if (hiddenPaths.includes(location.pathname)) return null;
+
+  if (hiddenPathPatterns.some(pattern => pattern.test(location.pathname))) {
+    return null;
+  }
 
   return (
     <button
