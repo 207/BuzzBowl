@@ -277,7 +277,7 @@ const PlayGame = () => {
             )}
           </div>
           {showQuestionCard ? (
-            <div className="game-card max-h-[min(42vh,20rem)] overflow-y-auto p-4 sm:min-h-[10rem] sm:p-6 md:max-h-none md:min-h-[12rem]">
+            <div className="game-card max-h-[10rem] overflow-y-auto p-4 sm:max-h-[12rem] sm:p-6 md:max-h-[16rem]">
               <p className="text-base font-body leading-relaxed text-foreground sm:text-lg md:text-xl">
                 {t.revealedText}
                 {!t.revealComplete ? <span className="text-muted-foreground"> ▌</span> : null}

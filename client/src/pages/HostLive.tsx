@@ -216,7 +216,7 @@ const HostLive = () => {
           )}
         </div>
 
-        <div className={`game-card ${isHouse ? "p-12 min-h-[16rem]" : "p-8 min-h-[12rem]"}`}>
+        <div className={`game-card overflow-y-auto ${isHouse ? "p-12 max-h-[24rem]" : "p-8 max-h-[16rem]"}`}>
           <p
             className={`font-body leading-relaxed text-foreground ${
               isHouse ? "text-4xl md:text-5xl" : "text-xl md:text-2xl"
