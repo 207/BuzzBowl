@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { useSocketResync } from "@/hooks/useSocketResync";
@@ -22,6 +22,7 @@ const HostLive = () => {
   const code = (paramCode ?? "").toUpperCase();
   const hostSecret = useMemo(() => (code ? sessionStorage.getItem(hostKey(code)) : null), [code]);
   const state = useServerGameState(code);
+  const questionScrollRef = useRef<HTMLDivElement>(null);
 
   const resyncHost = useCallback(() => {
     if (!code || !hostSecret) return;
@@ -40,6 +41,12 @@ const HostLive = () => {
   useSocketResync(Boolean(code && hostSecret), resyncHost);
 
   useAvatarModelPreload();
+
+  useEffect(() => {
+    if (questionScrollRef.current && state?.tossup?.revealedText) {
+      questionScrollRef.current.scrollTop = questionScrollRef.current.scrollHeight;
+    }
+  }, [state?.tossup?.revealedText]);
 
   useEffect(() => {
     if (state?.phase === "lobby") navigate(`/lobby/${code}`);
@@ -216,7 +223,10 @@ const HostLive = () => {
           )}
         </div>
 
-        <div className={`game-card overflow-y-auto ${isHouse ? "p-12 max-h-[24rem]" : "p-8 max-h-[16rem]"}`}>
+        <div 
+          ref={questionScrollRef}
+          className={`game-card overflow-y-auto ${isHouse ? "p-12 h-[24rem]" : "p-8 h-[16rem]"}`}
+        >
           <p
             className={`font-body leading-relaxed text-foreground ${
               isHouse ? "text-4xl md:text-5xl" : "text-xl md:text-2xl"

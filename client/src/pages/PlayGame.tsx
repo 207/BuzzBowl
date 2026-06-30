@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useServerGameState } from "@/hooks/useServerGameState";
@@ -29,6 +29,7 @@ const PlayGame = () => {
     [code],
   );
   const state = useServerGameState(code);
+  const questionScrollRef = useRef<HTMLDivElement>(null);
 
   const resyncPlayer = useCallback(() => {
     if (!code || !playerId) return;
@@ -68,6 +69,12 @@ const PlayGame = () => {
     }
     getSocket().emit("buzz", { roomCode: code, playerId });
   };
+
+  useEffect(() => {
+    if (questionScrollRef.current && state?.tossup?.revealedText) {
+      questionScrollRef.current.scrollTop = questionScrollRef.current.scrollHeight;
+    }
+  }, [state?.tossup?.revealedText]);
 
   if (!code) {
     return <p className="p-6 text-foreground">Invalid room.</p>;
@@ -277,7 +284,10 @@ const PlayGame = () => {
             )}
           </div>
           {showQuestionCard ? (
-            <div className="game-card max-h-[10rem] overflow-y-auto p-4 sm:max-h-[12rem] sm:p-6 md:max-h-[16rem]">
+            <div 
+              ref={questionScrollRef}
+              className="game-card h-[10rem] overflow-y-auto p-4 sm:h-[12rem] sm:p-6 md:h-[16rem]"
+            >
               <p className="text-base font-body leading-relaxed text-foreground sm:text-lg md:text-xl">
                 {t.revealedText}
                 {!t.revealComplete ? <span className="text-muted-foreground"> ▌</span> : null}
