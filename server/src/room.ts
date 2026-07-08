@@ -24,6 +24,7 @@ const defaultSettings: GameSettings = {
   correctMidRevealPoints: 15,
   negPoints: 5,
   answerCountdownSeconds: 10,
+  allowMultipleBuzzes: true,
 };
 
 function splitWords(text: string): string[] {
@@ -75,6 +76,8 @@ export class Room {
     ffaSkipVotes: Set<string> | null;
     /** After full reveal: players who already buzzed (one guess each, no neg) */
     postRevealBuzzUsedIds: Set<string>;
+    /** Everyone who has buzzed this question; used when multiple buzzes are disabled. */
+    buzzedPlayerIds: Set<string>;
   } | null = null;
 
   /**
@@ -122,9 +125,10 @@ export class Room {
     this.judgeVerdictFlash = null;
   }
 
-  private showJudgeVerdictFlash(verdict: "correct" | "incorrect"): void {
+  /** Returns true if a flash was started (a judge exists to show it). */
+  private showJudgeVerdictFlash(verdict: "correct" | "incorrect"): boolean {
     const judgeId = this.getReaderPlayerId();
-    if (!judgeId) return;
+    if (!judgeId) return false;
     this.clearJudgeVerdictFlash();
     const durationMs = 2800;
     this.judgeVerdictFlash = {
@@ -135,9 +139,20 @@ export class Room {
     this.judgeVerdictTimer = setTimeout(() => {
       this.judgeVerdictFlash = null;
       this.judgeVerdictTimer = null;
+      this.resumeRevealAfterFlash();
       this.push();
     }, durationMs);
     this.push();
+    return true;
+  }
+
+  /** Resume the word reveal once the verdict flash ends (unless someone re-buzzed or it finished). */
+  private resumeRevealAfterFlash(): void {
+    if (!this.current) return;
+    if (this.current.buzzPhase !== "open") return;
+    if (this.current.revealComplete || this.current.revealPaused) return;
+    if (this.revealTimer) return;
+    this.startRevealTicker();
   }
 
   static create(): Room {
@@ -181,6 +196,19 @@ export class Room {
     for (const p of this.players.values()) {
       if (p.socketId === socketId) p.socketId = null;
     }
+    this.reassignBetweenReaderIfDisconnected();
+  }
+
+  /**
+   * On a break, control (the "next question" button) belongs to the judge. If that judge
+   * disconnects, hand control to any still-connected player so the game can continue.
+   */
+  private reassignBetweenReaderIfDisconnected(): void {
+    if (this.phase !== "between") return;
+    const cur = this.readerBetweenPlayerId;
+    if (cur && this.isConnected(cur)) return;
+    const next = [...this.players.values()].find((p) => p.socketId != null);
+    this.readerBetweenPlayerId = next ? next.id : null;
   }
 
   bindSocket(playerId: string, socketId: string): boolean {
@@ -262,6 +290,7 @@ export class Room {
     merged.negPoints = clampInt(merged.negPoints, 0, 500);
     merged.answerCountdownSeconds = clampInt(merged.answerCountdownSeconds, 0, 120);
     merged.questionCount = clampInt(merged.questionCount, 1, 50);
+    merged.allowMultipleBuzzes = merged.allowMultipleBuzzes !== false;
     merged.playMode = merged.playMode === "remote" ? "remote" : "house";
     // OpenTDB is implemented but not shipped in the host UI yet; always quizbowl for now.
     merged.questionSource = "qbreader";
@@ -407,6 +436,7 @@ export class Room {
       answerDeadlineMs: null,
       ffaSkipVotes: this.gameMode === "ffa" ? new Set() : null,
       postRevealBuzzUsedIds: new Set(),
+      buzzedPlayerIds: new Set(),
     };
     if (!this.current.revealComplete) this.startRevealTicker();
     this.push();
@@ -442,11 +472,22 @@ export class Room {
     this.push();
   }
 
+  /** A player counts as present only while a socket is bound (survives disconnects). */
+  private isConnected(playerId: string): boolean {
+    return this.players.get(playerId)?.socketId != null;
+  }
+
   private getReaderPlayerIdForTossupIndex(tossupIndex: number): string | null {
     const ti = tossupIndex + this.judgeSlotBonus;
     if (this.gameMode === "ffa") {
-      if (this.ffaTurnOrder.length === 0) return null;
-      return this.ffaTurnOrder[ti % this.ffaTurnOrder.length] ?? null;
+      const order = this.ffaTurnOrder;
+      if (order.length === 0) return null;
+      // Skip disconnected players so an absent judge can't stall the game.
+      for (let k = 0; k < order.length; k += 1) {
+        const cand = order[(ti + k) % order.length]!;
+        if (this.isConnected(cand)) return cand;
+      }
+      return null;
     }
     const activeA = this.teamOrderA[this.activeIndexA] ?? null;
     const activeB = this.teamOrderB[this.activeIndexB] ?? null;
@@ -459,7 +500,7 @@ export class Room {
       const start = roundIndex % order.length;
       for (let k = 0; k < order.length; k += 1) {
         const cand = order[(start + k) % order.length]!;
-        if (cand !== activeA && cand !== activeB) return cand;
+        if (cand !== activeA && cand !== activeB && this.isConnected(cand)) return cand;
       }
       return null;
     };
@@ -492,6 +533,9 @@ export class Room {
     if (this.current.revealComplete) {
       ids = ids.filter((id) => !this.current!.postRevealBuzzUsedIds.has(id));
     }
+    if (!this.settings.allowMultipleBuzzes) {
+      ids = ids.filter((id) => !this.current!.buzzedPlayerIds.has(id));
+    }
     return ids;
   }
 
@@ -512,6 +556,7 @@ export class Room {
     this.clearJudgeVerdictFlash();
     this.current.buzzPhase = "locked";
     this.current.buzzWinnerId = playerId;
+    this.current.buzzedPlayerIds.add(playerId);
     const player = this.players.get(playerId);
     if (player) player.buzzCount += 1;
     this.clearRevealTimer();
@@ -585,9 +630,16 @@ export class Room {
       this.current.postRevealBuzzUsedIds.add(winner.id);
     }
 
-    if (!this.current.revealComplete && !this.revealTimer)
+    // Hold the reveal while the "incorrect" flash plays; it resumes when the flash ends.
+    // If no judge is present to flash, resume immediately so the reveal never stalls.
+    const flashing = this.showJudgeVerdictFlash("incorrect");
+    if (
+      !flashing &&
+      !this.current.revealComplete &&
+      !this.current.revealPaused &&
+      !this.revealTimer
+    )
       this.startRevealTicker();
-    this.showJudgeVerdictFlash("incorrect");
     this.push();
     if (!midReveal) this.finishTossupIfNoEligibleBuzzers();
   }

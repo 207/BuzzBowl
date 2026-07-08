@@ -26,6 +26,7 @@ export interface ServerGameSettings {
   correctMidRevealPoints: number;
   negPoints: number;
   answerCountdownSeconds: number;
+  allowMultipleBuzzes: boolean;
 }
 
 export interface ServerTossup {

@@ -44,6 +44,8 @@ export interface GameSettings {
   negPoints: number;
   /** After buzz: seconds before auto-incorrect (0 = disabled) */
   answerCountdownSeconds: number;
+  /** When false, each player may buzz at most once per question (no re-buzz after a wrong answer). */
+  allowMultipleBuzzes: boolean;
 }
 
 export interface PublicTossupState {

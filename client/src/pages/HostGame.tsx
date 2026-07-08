@@ -46,6 +46,9 @@ const HostGame = () => {
   const [answerCountdownSeconds, setAnswerCountdownSeconds] = useState(
     DEFAULT_HOST_ADVANCED.answerCountdownSeconds,
   );
+  const [allowMultipleBuzzes, setAllowMultipleBuzzes] = useState(
+    DEFAULT_HOST_ADVANCED.allowMultipleBuzzes,
+  );
 
   const handleCreate = () => {
     setCreating(true);
@@ -65,6 +68,7 @@ const HostGame = () => {
         correctFullRevealPoints,
         negPoints,
         answerCountdownSeconds,
+        allowMultipleBuzzes,
       };
       sessionStorage.setItem(setupKey(code), JSON.stringify(setup));
 
@@ -297,6 +301,21 @@ const HostGame = () => {
                   className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={allowMultipleBuzzes}
+                    onCheckedChange={(next) => setAllowMultipleBuzzes(next === true)}
+                  />
+                  <span className="space-y-1">
+                    <span className="block text-sm font-body font-medium text-foreground">
+                      Allow multiple buzzes per question
+                    </span>
+                    <span className="block text-xs font-body text-muted-foreground">
+                      When off, each player gets one buzz per question — a wrong answer locks them out for the rest of it.
+                    </span>
+                  </span>
+                </label>
             </CollapsibleContent>
           </Collapsible>
 

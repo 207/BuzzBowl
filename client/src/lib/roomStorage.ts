@@ -15,6 +15,7 @@ export const DEFAULT_HOST_ADVANCED = {
   correctFullRevealPoints: 10,
   negPoints: 5,
   answerCountdownSeconds: 10,
+  allowMultipleBuzzes: true,
 } as const;
 
 export interface HostSetupPayload {
@@ -30,6 +31,7 @@ export interface HostSetupPayload {
   correctFullRevealPoints: number;
   negPoints: number;
   answerCountdownSeconds: number;
+  allowMultipleBuzzes: boolean;
 }
 
 /** Normalized setup with defaults for older session payloads. */
@@ -63,6 +65,10 @@ export function readHostSetup(code: string): HostSetupPayload | null {
         typeof o.answerCountdownSeconds === "number"
           ? o.answerCountdownSeconds
           : DEFAULT_HOST_ADVANCED.answerCountdownSeconds,
+      allowMultipleBuzzes:
+        typeof o.allowMultipleBuzzes === "boolean"
+          ? o.allowMultipleBuzzes
+          : DEFAULT_HOST_ADVANCED.allowMultipleBuzzes,
     };
   } catch {
     return null;
@@ -84,5 +90,6 @@ export function socketSettingsFromHostSetup(
     correctMidRevealPoints: setup.correctMidRevealPoints,
     negPoints: setup.negPoints,
     answerCountdownSeconds: setup.answerCountdownSeconds,
+    allowMultipleBuzzes: setup.allowMultipleBuzzes,
   };
 }
