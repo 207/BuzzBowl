@@ -17,25 +17,6 @@ export function difficultyNumbers(level: string): number[] {
   return keys.map((n) => Number(n));
 }
 
-function difficultySetsEqual(a: number[], b: number[]): boolean {
-  if (a.length !== b.length) return false;
-  const sortedA = [...a].sort((x, y) => x - y);
-  const sortedB = [...b].sort((x, y) => x - y);
-  return sortedA.every((value, index) => value === sortedB[index]);
-}
-
-/** Maps server difficulty integers back to host UI preset */
-export function difficultyLabelFromNumbers(difficulties: number[]): string {
-  if (difficulties.length === 0) return "easy";
-  if (difficultySetsEqual(difficulties, difficultyNumbers("easy"))) return "easy";
-  if (difficultySetsEqual(difficulties, difficultyNumbers("medium"))) return "medium";
-  if (difficultySetsEqual(difficulties, difficultyNumbers("hard"))) return "hard";
-  const avg = difficulties.reduce((sum, value) => sum + value, 0) / difficulties.length;
-  if (avg <= 2.5) return "easy";
-  if (avg <= 5) return "medium";
-  return "hard";
-}
-
 export async function fetchQuestions(
   count: number = 10,
   difficulty: string = "easy",

@@ -174,7 +174,7 @@ export function registerSocketHandlers(io: Server): void {
       "set_game_mode",
       (msg: { roomCode: string; hostSecret: string; mode: GameMode }) => {
         const room = verifiedHostRoom(msg);
-        if (!room || room.phase !== "lobby") return;
+        if (!room) return;
         room.setGameMode(msg.mode);
       },
     );
@@ -219,7 +219,7 @@ export function registerSocketHandlers(io: Server): void {
         settings: Partial<GameSettings>;
       }) => {
         const room = verifiedHostRoom(msg);
-        if (!room || room.phase !== "lobby") return;
+        if (!room) return;
         room.updateSettings(msg.settings);
       },
     );
