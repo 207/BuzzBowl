@@ -29,6 +29,19 @@ export interface HostSetupPayload {
   answerCountdownSeconds: number;
 }
 
+export type HostSetupFormValues = Omit<HostSetupPayload, "hostName">;
+
+export const DEFAULT_HOST_SETUP: HostSetupFormValues = {
+  mode: "ffa",
+  difficulty: "easy",
+  category: "",
+  questionCount: 10,
+  correctMidRevealPoints: DEFAULT_HOST_ADVANCED.correctMidRevealPoints,
+  correctFullRevealPoints: DEFAULT_HOST_ADVANCED.correctFullRevealPoints,
+  negPoints: DEFAULT_HOST_ADVANCED.negPoints,
+  answerCountdownSeconds: DEFAULT_HOST_ADVANCED.answerCountdownSeconds,
+};
+
 /** Normalized setup with defaults for older session payloads. */
 export function readHostSetup(code: string): HostSetupPayload | null {
   try {
@@ -62,6 +75,15 @@ export function readHostSetup(code: string): HostSetupPayload | null {
   } catch {
     return null;
   }
+}
+
+export function writeHostSetup(code: string, setup: HostSetupPayload): void {
+  sessionStorage.setItem(setupKey(code), JSON.stringify(setup));
+}
+
+export function hostSetupFormValues(setup: HostSetupPayload): HostSetupFormValues {
+  const { hostName: _hostName, ...formValues } = setup;
+  return formValues;
 }
 
 /** Payload for `update_settings` / `start_game` (server GameSettings subset + difficulties). */
