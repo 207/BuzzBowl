@@ -4,7 +4,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { GameMode } from "@/lib/gameTypes";
 import { CATEGORIES } from "@/lib/qbreader";
 import type { HostSetupFormValues } from "@/lib/roomStorage";
 import { ChevronDown, Swords, Users } from "lucide-react";
