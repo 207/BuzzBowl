@@ -1,20 +1,51 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GameCodeDisplay from "@/components/GameCodeDisplay";
+import HostSetupForm from "@/components/HostSetupForm";
+import LobbySettingsSummary from "@/components/LobbySettingsSummary";
 import PlayerList from "@/components/PlayerList";
 import { mapServerPlayers } from "@/lib/gameTypes";
-import { difficultyNumbers } from "@/lib/qbreader";
+import { difficultyLabelFromNumbers, difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
 import {
+  DEFAULT_HOST_SETUP,
   hostKey,
+  hostSetupFormValues,
   playerKey,
   readHostSetup,
   socketSettingsFromHostSetup,
+  type HostSetupFormValues,
+  type HostSetupPayload,
+  writeHostSetup,
 } from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { Play, ArrowLeft, Shuffle, X } from "lucide-react";
 import { toast } from "sonner";
+
+function setupFromGameState(
+  gameMode: "ffa" | "team",
+  serverSettings: {
+    questionCount: number;
+    difficulties: number[];
+    category: string;
+    correctPoints: number;
+    correctMidRevealPoints: number;
+    negPoints: number;
+    answerCountdownSeconds: number;
+  },
+): HostSetupFormValues {
+  return {
+    mode: gameMode === "team" ? "teams" : "ffa",
+    difficulty: difficultyLabelFromNumbers(serverSettings.difficulties),
+    category: serverSettings.category,
+    questionCount: serverSettings.questionCount,
+    correctMidRevealPoints: serverSettings.correctMidRevealPoints,
+    correctFullRevealPoints: serverSettings.correctPoints,
+    negPoints: serverSettings.negPoints,
+    answerCountdownSeconds: serverSettings.answerCountdownSeconds,
+  };
+}
 
 const Lobby = () => {
   const navigate = useNavigate();
@@ -25,9 +56,46 @@ const Lobby = () => {
   const hostSecret = useMemo(() => (code ? sessionStorage.getItem(hostKey(code)) : null), [code]);
   const playerId = useMemo(() => (code ? sessionStorage.getItem(playerKey(code)) : null), [code]);
   const isHost = Boolean(hostSecret);
-  const setup = useMemo(() => readHostSetup(code), [code]);
 
+  const [setup, setSetup] = useState<HostSetupFormValues>(() => {
+    const stored = readHostSetup(code);
+    return stored ? hostSetupFormValues(stored) : DEFAULT_HOST_SETUP;
+  });
   const [startError, setStartError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!gameState || !isHost) return;
+    const stored = readHostSetup(code);
+    if (stored) return;
+    setSetup(setupFromGameState(gameState.gameMode, gameState.settings));
+  }, [gameState, isHost, code]);
+
+  const persistAndSyncSetup = useCallback(
+    (next: HostSetupFormValues) => {
+      setSetup(next);
+      if (!code || !hostSecret) return;
+
+      const existing = readHostSetup(code);
+      const fullSetup: HostSetupPayload = {
+        ...next,
+        hostName: existing?.hostName ?? "Host",
+      };
+      writeHostSetup(code, fullSetup);
+
+      const s = getSocket();
+      s.emit("set_game_mode", {
+        roomCode: code,
+        hostSecret,
+        mode: next.mode === "teams" ? "team" : "ffa",
+      });
+      s.emit("update_settings", {
+        roomCode: code,
+        hostSecret,
+        settings: socketSettingsFromHostSetup(fullSetup, difficultyNumbers(next.difficulty)),
+      });
+    },
+    [code, hostSecret],
+  );
 
   useEffect(() => {
     if (!code) return;
@@ -80,15 +148,21 @@ const Lobby = () => {
     : [];
 
   const handleStart = () => {
-    if (!code || !hostSecret || !setup) return;
+    if (!code || !hostSecret) return;
     setStartError(null);
+    const existing = readHostSetup(code);
+    const fullSetup: HostSetupPayload = {
+      ...setup,
+      hostName: existing?.hostName ?? "Host",
+    };
+    writeHostSetup(code, fullSetup);
     const s = getSocket();
     s.emit(
       "start_game",
       {
         roomCode: code,
         hostSecret,
-        settings: socketSettingsFromHostSetup(setup, difficultyNumbers(setup.difficulty)),
+        settings: socketSettingsFromHostSetup(fullSetup, difficultyNumbers(setup.difficulty)),
       },
       (res: { error?: string; message?: string }) => {
         if (res?.error === "no_tossups")
@@ -146,12 +220,20 @@ const Lobby = () => {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-heading font-bold text-foreground">Game Lobby</h1>
           <p className="text-muted-foreground font-body text-sm">
-            {uiMode === "teams" ? "Teams Mode" : "Free For All"}
-            {setup ? ` · ${setup.difficulty}` : ""}
+            {isHost ? "Adjust settings while players join" : "Waiting for the host to start"}
           </p>
         </div>
 
         <GameCodeDisplay code={code} />
+
+        {isHost ? (
+          <div className="game-card p-6 space-y-4">
+            <p className="text-sm font-body font-medium text-foreground">Game settings</p>
+            <HostSetupForm value={setup} onChange={persistAndSyncSetup} />
+          </div>
+        ) : gameState ? (
+          <LobbySettingsSummary gameMode={gameState.gameMode} settings={gameState.settings} />
+        ) : null}
 
         <PlayerList players={uiPlayers} mode={uiMode} />
 
