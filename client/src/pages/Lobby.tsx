@@ -2,24 +2,51 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "rea
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GameCodeDisplay from "@/components/GameCodeDisplay";
+import HostSetupForm from "@/components/HostSetupForm";
+import LobbySettingsSummary from "@/components/LobbySettingsSummary";
 import PlayerList from "@/components/PlayerList";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { compressSelfieFile } from "@/lib/compressSelfie";
 import { mapServerPlayers } from "@/lib/gameTypes";
-import { difficultyNumbers } from "@/lib/qbreader";
+import { difficultyLabelFromNumbers, difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
 import {
+  DEFAULT_HOST_SETUP,
   hostKey,
+  hostSetupFormValues,
   playerKey,
   readHostSetup,
   socketSettingsFromHostSetup,
+  type HostSetupFormValues,
+  type HostSetupPayload,
+  writeHostSetup,
 } from "@/lib/roomStorage";
 import { useServerGameState } from "@/hooks/useServerGameState";
 import { useSocketResync } from "@/hooks/useSocketResync";
 import { useAvatarModelPreload } from "@/hooks/useAvatarModelPreload";
 import type { AvatarId } from "@/lib/avatarModels";
+import type { ServerGameSettings } from "@/types/serverGame";
 import { Play, ArrowLeft, Camera } from "lucide-react";
 import { toast } from "sonner";
+
+function setupFromGameState(
+  gameMode: "ffa" | "team",
+  serverSettings: ServerGameSettings,
+): HostSetupFormValues {
+  return {
+    mode: gameMode === "team" ? "teams" : "ffa",
+    playMode: serverSettings.playMode,
+    questionSource: serverSettings.questionSource,
+    difficulty: difficultyLabelFromNumbers(serverSettings.difficulties),
+    category: serverSettings.category,
+    questionCount: serverSettings.questionCount,
+    correctMidRevealPoints: serverSettings.correctMidRevealPoints,
+    correctFullRevealPoints: serverSettings.correctPoints,
+    negPoints: serverSettings.negPoints,
+    answerCountdownSeconds: serverSettings.answerCountdownSeconds,
+    allowMultipleBuzzes: serverSettings.allowMultipleBuzzes,
+  };
+}
 
 const Lobby = () => {
   const navigate = useNavigate();
@@ -32,8 +59,13 @@ const Lobby = () => {
     code ? sessionStorage.getItem(playerKey(code)) : null,
   );
   const isHost = Boolean(hostSecret);
-  const setup = useMemo(() => readHostSetup(code), [code]);
-  const isRemoteMode = (setup?.playMode ?? gameState?.settings.playMode ?? "house") === "remote";
+
+  const [setup, setSetup] = useState<HostSetupFormValues>(() => {
+    const stored = readHostSetup(code);
+    return stored ? hostSetupFormValues(stored) : DEFAULT_HOST_SETUP;
+  });
+  const isRemoteMode =
+    (setup.playMode ?? gameState?.settings.playMode ?? "house") === "remote";
 
   const [startError, setStartError] = useState<string | null>(null);
   const [hostJoinName, setHostJoinName] = useState("");
@@ -41,6 +73,40 @@ const Lobby = () => {
   const [hostSelfie, setHostSelfie] = useState<string | null>(null);
   const [hostSelfieBusy, setHostSelfieBusy] = useState(false);
   const [hostAvatarId, setHostAvatarId] = useState<AvatarId>("fox");
+
+  useEffect(() => {
+    if (!gameState || !isHost) return;
+    const stored = readHostSetup(code);
+    if (stored) return;
+    setSetup(setupFromGameState(gameState.gameMode, gameState.settings));
+  }, [gameState, isHost, code]);
+
+  const persistAndSyncSetup = useCallback(
+    (next: HostSetupFormValues) => {
+      setSetup(next);
+      if (!code || !hostSecret) return;
+
+      const existing = readHostSetup(code);
+      const fullSetup: HostSetupPayload = {
+        ...next,
+        hostName: existing?.hostName ?? "Host",
+      };
+      writeHostSetup(code, fullSetup);
+
+      const s = getSocket();
+      s.emit("set_game_mode", {
+        roomCode: code,
+        hostSecret,
+        mode: next.mode === "teams" ? "team" : "ffa",
+      });
+      s.emit("update_settings", {
+        roomCode: code,
+        hostSecret,
+        settings: socketSettingsFromHostSetup(fullSetup, difficultyNumbers(next.difficulty)),
+      });
+    },
+    [code, hostSecret],
+  );
 
   useEffect(() => {
     if (!code) return;
@@ -114,15 +180,21 @@ const Lobby = () => {
   const needsRemoteHostPlayer = isHost && isRemoteMode && !playerId;
 
   const handleStart = () => {
-    if (!code || !hostSecret || !setup) return;
+    if (!code || !hostSecret) return;
     setStartError(null);
+    const existing = readHostSetup(code);
+    const fullSetup: HostSetupPayload = {
+      ...setup,
+      hostName: existing?.hostName ?? "Host",
+    };
+    writeHostSetup(code, fullSetup);
     const s = getSocket();
     s.emit(
       "start_game",
       {
         roomCode: code,
         hostSecret,
-        settings: socketSettingsFromHostSetup(setup, difficultyNumbers(setup.difficulty)),
+        settings: socketSettingsFromHostSetup(fullSetup, difficultyNumbers(setup.difficulty)),
       },
       (res: { error?: string; message?: string }) => {
         if (res?.error === "no_tossups")
@@ -228,12 +300,20 @@ const Lobby = () => {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-heading font-bold text-foreground">Game Lobby</h1>
           <p className="text-muted-foreground font-body text-sm">
-            {uiMode === "teams" ? "Teams Mode" : "Free For All"}
-            {setup ? ` · ${setup.difficulty}` : ""}
+            {isHost ? "Adjust settings while players join" : "Waiting for the host to start"}
           </p>
         </div>
 
         <GameCodeDisplay code={code} />
+
+        {isHost ? (
+          <div className="game-card p-6 space-y-4">
+            <p className="text-sm font-body font-medium text-foreground">Game settings</p>
+            <HostSetupForm value={setup} onChange={persistAndSyncSetup} />
+          </div>
+        ) : gameState ? (
+          <LobbySettingsSummary gameMode={gameState.gameMode} settings={gameState.settings} />
+        ) : null}
 
         <PlayerList
           players={uiPlayers}

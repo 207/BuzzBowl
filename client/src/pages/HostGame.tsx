@@ -1,54 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Checkbox } from "@/components/ui/checkbox";
-import { GameMode } from "@/lib/gameTypes";
-import { CATEGORIES, difficultyNumbers } from "@/lib/qbreader";
+import HostSetupForm from "@/components/HostSetupForm";
+import { difficultyNumbers } from "@/lib/qbreader";
 import { getSocket } from "@/lib/socket";
 import {
-  DEFAULT_HOST_ADVANCED,
+  DEFAULT_HOST_SETUP,
   hostKey,
   setupKey,
   type HostSetupPayload,
   socketSettingsFromHostSetup,
 } from "@/lib/roomStorage";
-import { ArrowLeft, ChevronDown, CircleHelp, Crown, Users, Swords } from "lucide-react";
+import { ArrowLeft, Crown } from "lucide-react";
 
 const HostGame = () => {
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<GameMode>("ffa");
-  const [playMode, setPlayMode] = useState<"house" | "remote">("remote");
-  const [difficulty, setDifficulty] = useState("easy");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [questionCount, setQuestionCount] = useState(10);
+  const [setup, setSetup] = useState(DEFAULT_HOST_SETUP);
   const [creating, setCreating] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-
-  const [correctMidRevealPoints, setCorrectMidRevealPoints] = useState(
-    DEFAULT_HOST_ADVANCED.correctMidRevealPoints,
-  );
-  const [correctFullRevealPoints, setCorrectFullRevealPoints] = useState(
-    DEFAULT_HOST_ADVANCED.correctFullRevealPoints,
-  );
-  const [negPoints, setNegPoints] = useState(DEFAULT_HOST_ADVANCED.negPoints);
-  const [answerCountdownSeconds, setAnswerCountdownSeconds] = useState(
-    DEFAULT_HOST_ADVANCED.answerCountdownSeconds,
-  );
-  const [allowMultipleBuzzes, setAllowMultipleBuzzes] = useState(
-    DEFAULT_HOST_ADVANCED.allowMultipleBuzzes,
-  );
 
   const handleCreate = () => {
     setCreating(true);
@@ -56,32 +25,22 @@ const HostGame = () => {
     s.once("host_created", (msg: { roomCode: string; hostSecret: string }) => {
       const code = msg.roomCode;
       sessionStorage.setItem(hostKey(code), msg.hostSecret);
-      const setup: HostSetupPayload = {
-        mode,
-        playMode,
-        questionSource: "qbreader",
-        difficulty,
-        category: selectedCategories.join(","),
-        questionCount,
+      const fullSetup: HostSetupPayload = {
+        ...setup,
         hostName: "Host",
-        correctMidRevealPoints,
-        correctFullRevealPoints,
-        negPoints,
-        answerCountdownSeconds,
-        allowMultipleBuzzes,
       };
-      sessionStorage.setItem(setupKey(code), JSON.stringify(setup));
+      sessionStorage.setItem(setupKey(code), JSON.stringify(fullSetup));
 
-      const diffs = difficultyNumbers(difficulty);
+      const diffs = difficultyNumbers(setup.difficulty);
       s.emit("set_game_mode", {
         roomCode: code,
         hostSecret: msg.hostSecret,
-        mode: mode === "teams" ? "team" : "ffa",
+        mode: setup.mode === "teams" ? "team" : "ffa",
       });
       s.emit("update_settings", {
         roomCode: code,
         hostSecret: msg.hostSecret,
-        settings: socketSettingsFromHostSetup(setup, diffs),
+        settings: socketSettingsFromHostSetup(fullSetup, diffs),
       });
 
       setCreating(false);
@@ -108,216 +67,7 @@ const HostGame = () => {
         </div>
 
         <div className="game-card p-6 space-y-5">
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Game Mode</label>
-            <div className="grid grid-cols-2 gap-3">
-              <ModeButton
-                active={mode === "ffa"}
-                onClick={() => setMode("ffa")}
-                icon={<Swords className="w-5 h-5" />}
-                label="Free For All"
-              />
-              <ModeButton
-                active={mode === "teams"}
-                onClick={() => setMode("teams")}
-                icon={<Users className="w-5 h-5" />}
-                label="Teams"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Play Mode</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPlayMode("remote")}
-                className={`rounded-xl border px-3 py-3 text-left transition-all ${
-                  playMode === "remote"
-                    ? "border-primary/60 bg-primary/10 text-foreground"
-                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <p className="font-body text-sm font-semibold">Remote play</p>
-                <p className="mt-1 text-xs">No TV route during game; everyone plays on phone.</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPlayMode("house")}
-                className={`rounded-xl border px-3 py-3 text-left transition-all ${
-                  playMode === "house"
-                    ? "border-primary/60 bg-primary/10 text-foreground"
-                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <p className="font-body text-sm font-semibold">House party</p>
-                <p className="mt-1 text-xs">Question on host screen; judge controls from phone.</p>
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Difficulty</label>
-            <div className="grid grid-cols-3 gap-2">
-              {["easy", "medium", "hard"].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDifficulty(d)}
-                  className={`h-10 rounded-lg font-body text-sm font-medium capitalize transition-all ${
-                    difficulty === d
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Category (optional)</label>
-            <div className="scrollbar-themed max-h-44 space-y-2 overflow-y-auto rounded-xl border border-border bg-muted/30 p-3">
-              {CATEGORIES.map((c) => {
-                const checked = selectedCategories.includes(c);
-                return (
-                  <label
-                    key={c}
-                    className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
-                  >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(next) => {
-                        const isOn = next === true;
-                        setSelectedCategories((prev) =>
-                          isOn ? [...prev, c] : prev.filter((x) => x !== c),
-                        );
-                      }}
-                    />
-                    <span>{c}</span>
-                  </label>
-                );
-              })}
-            </div>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                onClick={() => setSelectedCategories([...CATEGORIES])}
-                disabled={selectedCategories.length === CATEGORIES.length}
-              >
-                Select all
-              </button>
-              <button
-                type="button"
-                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                onClick={() => setSelectedCategories([])}
-                disabled={selectedCategories.length === 0}
-              >
-                Clear categories
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-body font-medium text-foreground">Questions in game</label>
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={questionCount}
-              onChange={(e) => setQuestionCount(Number(e.target.value) || 10)}
-              className="w-full h-12 rounded-xl bg-muted border border-border px-4 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            />
-          </div>
-
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3 text-left text-sm font-body font-medium text-foreground hover:bg-muted/60 transition-colors">
-              Advanced settings
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
-              />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4 text-sm">
-                <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-body font-medium text-foreground">
-                    Points (interrupt — mid question)
-                  </label>
-                  <FieldTooltip text="Awarded when the judge marks a buzz correct before the full question is revealed." />
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={500}
-                  value={correctMidRevealPoints}
-                  onChange={(e) => setCorrectMidRevealPoints(Number(e.target.value) || 0)}
-                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                </div>
-                <div className="space-y-2">
-                <label className="text-sm font-body font-medium text-foreground">
-                  Points (after full question)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={500}
-                  value={correctFullRevealPoints}
-                  onChange={(e) => setCorrectFullRevealPoints(Number(e.target.value) || 0)}
-                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                </div>
-                <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-body font-medium text-foreground">
-                    Negative points (wrong on interrupt)
-                  </label>
-                  <FieldTooltip text="Subtracted when wrong before the full question is shown (same rules as before for team vs FFA)." />
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={500}
-                  value={negPoints}
-                  onChange={(e) => setNegPoints(Number(e.target.value) || 0)}
-                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                </div>
-                <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-body font-medium text-foreground">
-                    Answer countdown (seconds)
-                  </label>
-                  <FieldTooltip text="After a buzz, time before an automatic incorrect (0 = off). The judge can still score sooner." />
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={answerCountdownSeconds}
-                  onChange={(e) => setAnswerCountdownSeconds(Number(e.target.value) || 0)}
-                  className="w-full h-11 rounded-xl bg-muted border border-border px-3 font-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                </div>
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
-                  <Checkbox
-                    className="mt-0.5"
-                    checked={allowMultipleBuzzes}
-                    onCheckedChange={(next) => setAllowMultipleBuzzes(next === true)}
-                  />
-                  <span className="space-y-1">
-                    <span className="block text-sm font-body font-medium text-foreground">
-                      Allow multiple buzzes per question
-                    </span>
-                    <span className="block text-xs font-body text-muted-foreground">
-                      When off, each player gets one buzz per question — a wrong answer locks them out for the rest of it.
-                    </span>
-                  </span>
-                </label>
-            </CollapsibleContent>
-          </Collapsible>
+          <HostSetupForm value={setup} onChange={setSetup} />
 
           <Button
             variant="hero"
@@ -333,47 +83,5 @@ const HostGame = () => {
     </div>
   );
 };
-
-const ModeButton = ({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`flex items-center justify-center gap-2 h-12 rounded-xl font-body text-sm font-medium transition-all ${
-      active
-        ? "bg-primary text-primary-foreground glow-primary"
-        : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-    }`}
-  >
-    {icon}
-    {label}
-  </button>
-);
-
-const FieldTooltip = ({ text }: { text: string }) => (
-  <TooltipProvider delayDuration={100}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label="Field description"
-          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-        >
-          <CircleHelp className="h-4 w-4" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs text-xs leading-snug">{text}</TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-);
 
 export default HostGame;
